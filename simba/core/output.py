@@ -23,14 +23,6 @@ class Output:
         return self._output_function
 
     @property
-    def derivative_equations(self):
-        return self._derivative_equations
-
-    @property
-    def derivative_function(self):
-        return self._derivative_function
-
-    @property
     def system_inputs(self):
         return self._system_inputs
 
@@ -42,17 +34,7 @@ class Output:
     def external_inputs(self):
         return self._external_inputs
 
-    @property
-    def global_state_indices(self):
-        return self._global_state_indices
-
-    @global_state_indices.setter
-    def global_state_indices(self, value):
-        self._global_state_indices = np.asarray(value, dtype=np.int32)
-
-    def __init__(
-            self, component, name, system_inputs, signal_names, size, units='any', dtype=nb.float64[:]
-    ):
+    def __init__(self, component, name, system_inputs, signal_names, size, units='any', dtype=nb.float64[:]):
         self._component = component
         self._size = size
         self._name = name
@@ -64,8 +46,6 @@ class Output:
         self._output_equation = None
         self._global_state_indices = None
         self._output_function = None
-        self._derivative_equations = ()
-        self._derivative_function = None
 
     def __call__(self, external_input):
         self.connect(external_input)
@@ -81,20 +61,21 @@ class Output:
             external_input.disconnect(self)
 
     def compile(self):
-        assert self.global_state_indices is not None, 'State indices have to be set before compilation.'
+
         assert self._output_equation is not None, 'Output equation has to be set before compilation.'
 
         output_equation = self._output_equation
         input_equations = [sys_input.input_equation for sys_input in self._system_inputs]
-        state_indices = self._global_state_indices
+        local_state_indices = self.component.local_state_indices
 
         def state_function(t, global_state):
-            local_state = global_state[state_indices]
+            local_state = global_state[local_state_indices]
             inputs = tuple(input_eq(global_state) for input_eq in input_equations)
             return output_equation(t, local_state, *inputs)
 
         self._output_function = state_function
 
+        """ Future Content
         if len(self.derivative_equations) != len(self._system_inputs):
             return
         derivative_equations = self._derivative_equations
@@ -110,3 +91,4 @@ class Output:
                 input_derivative_functions[i](t, global_state, derivative_array, next_derivative_product)
 
         self._derivative_function = derivative_function
+        """

@@ -25,7 +25,4 @@ class PController(SystemComponent):
 
         self.outputs['action'].equation = p_control
 
-        @nb.njit
-        def derivative(local_state, error_input):
-            return p_gain
 

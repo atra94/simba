@@ -61,14 +61,6 @@ class Input:
     def external_output(self):
         return self._external_output
 
-    @property
-    def global_state_indices(self):
-        return self._global_state_indices
-
-    @global_state_indices.setter
-    def global_state_indices(self, value):
-        self._global_state_indices = np.asarray(value, dtype=np.int32)
-
     def __init__(self, component, name: str, size: int, dtype: int, default_value: np.ndarray = None):
         # (SystemComponent):  Overlying System Component of the Input
         self._component = component
@@ -92,10 +84,6 @@ class Input:
             self._default_value = np.asarray(self._default_value, dtype=self.dtype)
             assert size == self._default_value.size
         self._default_value = default_value
-
-        # np.ndarray: Set by the SystemComponent during compilation to
-        # read the components state from the global state
-        self._global_state_indices = None
 
         # Set during the compilation.
         # It will be the compiled output_equation or a compiled default value, if unconnected.
