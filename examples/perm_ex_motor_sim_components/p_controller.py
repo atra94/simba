@@ -11,18 +11,18 @@ class PController(SystemComponent):
 
     def __init__(self, name='p_controller', p_gain=1.0):
         self._p_gain = p_gain
-        error_input = Input(self, name='error', dtype=nb.float64[:], size=1)
-        output = Output(self, dtype=nb.float64[:], size=1, signal_names=('action',), system_inputs=(error_input,))
+        error_input = Input(self, name='error', accepted_dtypes=(nb.float64[:],), size=1)
+        output = Output(
+            self, name='action', dtype=nb.float64[:], size=1, signal_names=('action',), system_inputs=(error_input,)
+        )
         super().__init__(name, outputs=(output,), inputs=(error_input,))
 
-    def compile(self):
+    def __call__(self, error):
+        self._inputs['error'].connect(error)
 
+    def compile(self, numba_compile=True):
         p_gain = self._p_gain
 
-        @nb.njit
+        @self.output_equation('action', numba_compile=numba_compile)
         def p_control(local_state, error_input):
             return p_gain * error_input
-
-        self.outputs['action'].equation = p_control
-
-

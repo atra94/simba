@@ -23,26 +23,15 @@ class Input:
             f'has size {self._external_output.size}.'
 
     @property
-    def dtype(self):
+    def dtype(self) -> type:
         return self._dtype
 
-    @dtype.setter
-    def dtype(self, value):
-        val = int(value)
-        if self._dtype == val:
-            return
-        self._dtype = val
-        if self._external_output is None:
-            return
-        if self._external_output.dtype is None:
-            self._external_output.dtype = val
-        assert self._external_output.dtype == val, \
-            f'dtype Mismatch: Input {self._component.name}.{self.name} has type {self.dtype} and ' \
-            f'Output {self._external_output.component.name}.{self._external_output.name} ' \
-            f'has type {self._external_output.dtype}.'
+    @property
+    def accepted_dtypes(self) -> tuple:
+        return self._accepted_dtypes
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
@@ -54,14 +43,14 @@ class Input:
         return self._function
 
     @property
-    def compiled(self):
+    def compiled(self) -> bool:
         return self._function is not None
 
     @property
     def external_output(self):
         return self._external_output
 
-    def __init__(self, component, name: str, size: int, dtype: int, default_value: np.ndarray = None):
+    def __init__(self, component, name: str, size: int, accepted_dtypes: tuple, default_value=None):
         # (SystemComponent):  Overlying System Component of the Input
         self._component = component
 
@@ -69,10 +58,12 @@ class Input:
         self._name = name
 
         # (int / None): Space of the Input. None for unset until connection.
-        self._size = int
+        self._size = size
 
         # (type / None):
-        self._dtype = dtype
+        self._dtype = None
+
+        self._accepted_dtypes = tuple(accepted_dtypes)
 
         # (Output): The output from another system that the input is connected to.
         self._external_output = None
@@ -81,7 +72,7 @@ class Input:
         # If a default value is specified, a dtype and a size have to be specified during initialization.
         # None: A connected output is required.
         if default_value is not None:
-            self._default_value = np.asarray(self._default_value, dtype=self.dtype)
+            self._default_value = np.asarray(default_value, dtype=self.dtype)
             assert size == self._default_value.size
         self._default_value = default_value
 
@@ -107,10 +98,12 @@ class Input:
         if self._external_output is not None:
             self._external_output.disconnect(self)
         self._external_output = output
-        assert output.dtype == self._dtype, \
-            f'Datatype Mismatch: Input dtype {self._dtype}, Output dtype: {output.dtype}. Connection aborted'
+        assert output.dtype in self._accepted_dtypes, \
+            f'Datatype Mismatch: Accepted Input dtypes {self._accepted_dtypes}, ' \
+            f'Output dtype: {output.dtype}. Connection aborted'
         assert output.size == self._size, \
             f'Size Mismatch: Input size {self._size}, Output size: {output.size}. Connection aborted'
+        self._dtype = output.dtype
         if self not in output.external_inputs:
             output.connect(self)
 

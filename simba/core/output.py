@@ -1,10 +1,14 @@
-import numpy as np
 import numba as nb
 
 from .input import Input
+from simba.core.function_factories.output_function_factory import create_output_function
 
 
 class Output:
+
+    @property
+    def name(self):
+        return self._name
 
     @property
     def dtype(self):
@@ -34,7 +38,15 @@ class Output:
     def external_inputs(self):
         return self._external_inputs
 
-    def __init__(self, component, name, system_inputs, signal_names, size, units='any', dtype=nb.float64[:]):
+    @property
+    def output_equation(self):
+        return self._output_equation
+
+    @output_equation.setter
+    def output_equation(self, equation):
+        self._output_equation = equation
+
+    def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=nb.float64[:]):
         self._component = component
         self._size = size
         self._name = name
@@ -63,17 +75,17 @@ class Output:
     def compile(self):
 
         assert self._output_equation is not None, 'Output equation has to be set before compilation.'
-
+        for input_ in self._system_inputs:
+            input_.compile()
         output_equation = self._output_equation
-        input_equations = [sys_input.input_equation for sys_input in self._system_inputs]
-        local_state_indices = self.component.local_state_indices
-
-        def state_function(t, global_state):
-            local_state = global_state[local_state_indices]
-            inputs = tuple(input_eq(global_state) for input_eq in input_equations)
-            return output_equation(t, local_state, *inputs)
-
-        self._output_function = state_function
+        input_functions = [sys_input.function for sys_input in self._system_inputs]
+        if self._component.state is not None:
+            local_state_indices = self._component.state.local_state_indices
+        else:
+            local_state_indices = slice(0)
+        self._output_function = create_output_function(
+            output_equation, input_functions, local_state_indices, self._dtype
+        )
 
         """ Future Content
         if len(self.derivative_equations) != len(self._system_inputs):

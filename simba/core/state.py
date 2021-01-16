@@ -1,6 +1,7 @@
 import numba as nb
 
 from .input import Input
+from .function_factories.state_function_factory import create_state_function
 
 
 class State:
@@ -43,6 +44,15 @@ class State:
         return self._state_function
 
     @property
+    def local_state_slice(self):
+        return self._local_state_slice
+
+    @local_state_slice.setter
+    def local_state_slice(self, state_slice):
+        assert type(state_slice) is slice
+        self._local_state_slice = state_slice
+
+    @property
     def compiled(self):
         return self._state_function is not None
 
@@ -56,19 +66,13 @@ class State:
         self._dtype = dtype
         self._size = size
         self._component = component
+        self._local_state_slice = None
 
     def compile(self):
-        assert self.component.local_state_indices is not None, 'State indices have to be set before compilation.'
+        assert self._local_state_slice is not None, 'State indices have to be set before compilation.'
         assert self.state_equation is not None, 'The state equation has to be set before compilation.'
         state_equation = self._state_equation
         for input_ in self._system_inputs:
             input_.compile()
-        input_functions = [input_.input_fct for input_ in self._system_inputs]
-        local_state_indices = self.component.local_state_indices
-
-        def state_function(t, global_state):
-            local_state = global_state[local_state_indices]
-            inputs = tuple(input_fct(t, global_state) for input_fct in input_functions)
-            return state_equation(t, local_state, *inputs)
-
-        self._state_function = state_function
+        input_functions = [input_.function for input_ in self._system_inputs]
+        self._state_function = create_state_function(state_equation, input_functions, self.local_state_slice)

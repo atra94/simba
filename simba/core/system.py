@@ -1,6 +1,3 @@
-from .system_component import StatefulSystemComponent
-
-import numba as nb
 import numpy as np
 
 
@@ -23,21 +20,26 @@ class System:
     def state_length(self):
         return self._state_length
 
-    def __init__(self, components, system_input=None):
+    def __init__(self, components):
         self._compiled = False
         self._system_equation = None
 
-        self._components = components
+        self._components = {component.name: component for component in components}
         self._inputs = dict()
         self._outputs = dict()
-        for component in self._components:
-            self._outputs += component.outputs
-            self._inputs += component.inputs
+        self._states = dict()
+        for component in self._components.values():
+            for output in component.outputs.values():
+                self._outputs[f'{component.name}.{output.name}'] = output
+            for input_ in component.inputs.values():
+                self._inputs[f'{component.name}.{input_.name}'] = input_
+            if component.state is not None:
+                self._states[f'{component.name}.State'] = component.state
 
         self._stateful_components = tuple(
-            component for component in self._components if isinstance(component, StatefulSystemComponent)
+            component for component in components if component.state is not None
         )
-        self._state_length = sum(component.state.state_length for component in self._stateful_components)
+        self._state_length = sum(state.size for state in self._states.values())
 
     def _order_outputs(self):
         ordered_outputs = []
@@ -56,13 +58,26 @@ class System:
 
         self._outputs = ordered_outputs
 
-    def system_equation(self, t, y, *inputs):
-        derivatives = np.zeros(self._state_length)
-        for state in self._states:
-            derivatives = state.state_function(t, y, derivatives, *inputs)
-        return derivatives
+    def compile(self, numba_compile=True):
+        start_index = 0
 
-    def compile(self):
-        for input_ in self._inputs:
-            assert input_.connected_output is not None, f'Input {input_.name} is unconnected.'
-        self._order_outputs()
+        for component in self._components.values():
+            component.compile(numba_compile=numba_compile)
+        for state in self._states.values():
+            state.local_state_indices = slice(start_index, start_index+state.size)
+            start_index += state.size
+            state.compile()
+        for output in self._outputs.values():
+            output.compile()
+        for input_ in self._inputs.values():
+            input_.compile()
+
+        state_functions = [state.state_function for state in self._states.values()]
+
+        def system_equation(t, y):
+            derivatives = np.zeros(self._state_length, dtype=float)
+            for state_function in state_functions:
+                derivatives = state_function(t, y, derivatives)
+            return derivatives
+
+        self._system_equation = system_equation
