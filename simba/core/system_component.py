@@ -26,7 +26,7 @@ class SystemComponent:
 
     @property
     def local_state_slice(self):
-        return self._state.local_state_slice if self._state is not None else slice(0)
+        return self._state.local_state_slice if self._state is not None else np.arange(0)
 
     def __init__(self, name: str, inputs=(), outputs=(), state=None):
         assert all(isinstance(o, Output) for o in outputs)
@@ -50,9 +50,15 @@ class SystemComponent:
                 input_dtypes = tuple(inp.dtype for inp in self._outputs[output_name].system_inputs)
                 if self._state is not None:
                     state_dtype = self._state.dtype
-                    signature = output_dtype(time_dtype, state_dtype, *input_dtypes)
+                    if len(input_dtypes) > 0:
+                        signature = output_dtype(time_dtype, state_dtype, *input_dtypes)
+                    else:
+                        signature = output_dtype(time_dtype, state_dtype)
                 else:
-                    signature = output_dtype(time_dtype, *input_dtypes)
+                    if len(input_dtypes) > 0:
+                        signature = output_dtype(time_dtype, *input_dtypes)
+                    else:
+                        signature = output_dtype(time_dtype)
                 func = nb.njit(signature)(func)
             self._outputs[output_name].output_equation = func
 
@@ -68,7 +74,7 @@ class SystemComponent:
                 state_dtype = self._state.dtype
                 input_dtypes = tuple(inp.dtype for inp in self._state.system_inputs)
                 signature = output_dtype(time_dtype, state_dtype, *input_dtypes)
-                func = nb.njit(func, signature)
+                func = nb.njit(signature)(func)
             self._state.state_equation = func
 
         return wrapper

@@ -1,3 +1,4 @@
+import numba as nb
 import numpy as np
 
 
@@ -63,23 +64,28 @@ class System:
     def compile(self, numba_compile=True):
         start_index = 0
         for state in self._states.values():
-            state.local_state_slice = slice(start_index, start_index + state.size)
+            state.local_state_slice = np.arange(start_index, start_index + state.size)
             start_index += state.size
         for component in self._components.values():
             component.compile(numba_compile=numba_compile)
-        for state in self._states.values():
-            state.compile()
         for output in self._outputs.values():
             output.compile()
         for input_ in self._inputs.values():
             input_.compile()
-
-        state_functions = [state.state_function for state in self._states.values()]
+        for state in self._states.values():
+            state.compile()
+        state_functions = tuple([state.state_function for state in self._states.values()])
+        state_length = self._state_length
+        signature = nb.types.Array(nb.float32, 1, 'C')(nb.float32, nb.types.Array(nb.float32, 1, 'C'))
+        state_fct_0 = state_functions[0]
+        state_fct_1 = state_functions[1]
 
         def system_equation(t, y):
-            derivatives = np.zeros(self._state_length, dtype=float)
-            for state_function in state_functions:
-                state_function(t, y, derivatives)
+            derivatives = np.zeros(state_length, dtype=np.float32)
+            state_fct_0(t, y, derivatives)
+            state_fct_1(t, y, derivatives)
             return derivatives
 
+        if numba_compile:
+            system_equation = nb.njit(signature)(system_equation)
         self._system_equation = system_equation

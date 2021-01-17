@@ -5,7 +5,7 @@ import simba.core as core
 
 class Sub(core.SystemComponent):
 
-    def __init__(self, name='sub', size=1, dtype=nb.float64[:]):
+    def __init__(self, name='sub', size=1, dtype=nb.types.Array(nb.float32, 1, 'C')):
         in1 = core.Input(self, name='In1', size=size, accepted_dtypes=(dtype,))
         in2 = core.Input(self, name='In2', size=size, accepted_dtypes=(dtype,))
         out = core.Output(self, name='Out', size=size, dtype=dtype, system_inputs=(in1, in2))

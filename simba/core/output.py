@@ -46,7 +46,7 @@ class Output:
     def output_equation(self, equation):
         self._output_equation = equation
 
-    def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=nb.float64[:]):
+    def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=nb.types.Array(nb.float32, 1, 'C')):
         self._component = component
         self._size = size
         self._name = name
@@ -58,6 +58,7 @@ class Output:
         self._output_equation = None
         self._global_state_indices = None
         self._output_function = None
+        self._compiled = False
 
     def __call__(self, external_input):
         self.connect(external_input)
@@ -73,16 +74,19 @@ class Output:
             external_input.disconnect(self)
 
     def compile(self):
+        if self._compiled:
+            return
         assert self._output_equation is not None, 'Output equation has to be set before compilation.'
         for input_ in self._system_inputs:
             input_.compile()
         output_equation = self._output_equation
-        input_functions = [sys_input.function for sys_input in self._system_inputs]
+        input_functions = tuple([sys_input.function for sys_input in self._system_inputs])
 
-        local_state_indices = self._component.local_state_slice
+        local_state_slice = self._component.local_state_slice
         self._output_function = create_output_function(
-            output_equation, input_functions, local_state_indices, self._dtype
+            output_equation, input_functions, local_state_slice, self._dtype
         )
+        self._compiled = True
 
         """ Future Content
         if len(self.derivative_equations) != len(self._system_inputs):

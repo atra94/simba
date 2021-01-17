@@ -63,6 +63,8 @@ class Input:
         # (type / None):
         self._dtype = None
 
+        self._compiled = False
+
         self._accepted_dtypes = tuple(accepted_dtypes)
 
         # (Output): The output from another system that the input is connected to.
@@ -84,6 +86,8 @@ class Input:
         self.connect(output)
 
     def compile(self):
+        if self._compiled:
+            return
         assert self._external_output is not None or self._default_value is not None, \
             f'Unconnected Input {self._component.name}.{self._name}:' \
             f' Either an Output has to be connected to the input or a default value has to be set.'
@@ -94,6 +98,7 @@ class Input:
         else:
             default_value = self._default_value
             self._function = lambda t, global_state: default_value
+        self._compiled = True
 
     def connect(self, output):
         if self._external_output is not None:

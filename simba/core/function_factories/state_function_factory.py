@@ -20,36 +20,44 @@ def create_state_function(state_equation, input_functions, local_state_indices):
         fct = _create_arbitrary_function(state_equation, input_functions, local_state_indices)
     if type(state_equation) == nb.core.registry.CPUDispatcher\
             and all(type(in_fct) == nb.core.registry.CPUDispatcher for in_fct in input_functions):
-        signature = nb.float64[:](nb.float64, nb.float64[:])
+        signature = nb.none(nb.float32, nb.types.Array(nb.float32, 1, 'C'), nb.types.Array(nb.float32, 1, 'C'))
         fct = nb.njit(signature)(fct)
     return fct
 
 
 @_register(0)
 def _create_0_input_fct(state_equation, input_functions, local_state_indices):
+
     def mapping(t, global_state, global_derivatives):
         local_state = global_state[local_state_indices]
         global_derivatives[local_state_indices] = state_equation(t, local_state)
+
     return mapping
 
 
 @_register(1)
 def _create_1_input_fct(state_equation, input_functions, local_state_indices):
+
+    input_function_0 = input_functions[0]
+
     def mapping(t, global_state, global_derivatives):
         local_state = global_state[local_state_indices]
-        input_0 = input_functions[0](t, global_state)
+        input_0 = input_function_0(t, global_state)
         global_derivatives[local_state_indices] = state_equation(t, local_state, input_0)
     return mapping
 
 
 @_register(2)
 def _create_2_input_fct(state_equation, input_functions, local_state_indices):
+
+    input_function_0 = input_functions[0]
+    input_function_1 = input_functions[1]
+
     def mapping(t, global_state, global_derivatives):
         local_state = global_state[local_state_indices]
-        input_0 = input_functions[0](t, global_state)
-        input_1 = input_functions[1](t, global_state)
-        result = state_equation(t, local_state, input_0, input_1)
-        global_derivatives[local_state_indices] = result
+        input_0 = input_function_0(t, global_state)
+        input_1 = input_function_1(t, global_state)
+        global_derivatives[local_state_indices] = state_equation(t, local_state, input_0, input_1)
     return mapping
 
 
