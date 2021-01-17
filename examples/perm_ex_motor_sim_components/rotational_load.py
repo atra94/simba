@@ -6,7 +6,7 @@ from simba.core import SystemComponent, Input, Output, State
 
 class RotationalMechanicalLoad(SystemComponent):
 
-    def __init__(self, name='RotationalLoad', j=0.05):
+    def __init__(self, name='RotationalLoad', j=0.45):
         driving_torque_input = Input(self, name='T', accepted_dtypes=(nb.float64[:],), size=1)
         load_torque_input = Input(
             self, name='T_L', accepted_dtypes=(nb.float64[:],), size=1, default_value=np.array([0.0])

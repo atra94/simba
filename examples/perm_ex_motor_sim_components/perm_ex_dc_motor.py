@@ -46,19 +46,19 @@ class PermanentlyExcitedDCMotor(SystemComponent):
         r_a = self._parameter['r_a']
         psi_e = self._parameter['psi_e']
         model_parameters = np.array([
-            [psi_e, r_a, 1.0]
+            -psi_e, -r_a, 1.0
         ]) / l_a
 
         @self.state_equation(numba_compile=numba_compile)
-        def ode(local_state, u, omega):
+        def ode(t, local_state, u, omega):
             # i = local_state[0]
-            return np.matmul(model_parameters, np.array([omega, local_state[0], u[0]]))
+            return np.matmul(model_parameters, np.array([omega[0],  local_state[0], u[0]]))
 
         @self.output_equation('T', numba_compile=numba_compile)
-        def torque(local_state):
+        def torque(t, local_state):
             return psi_e * local_state
 
         @self.output_equation('i', numba_compile=numba_compile)
-        def i(local_state):
+        def i(t, local_state):
             return local_state
 

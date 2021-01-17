@@ -24,5 +24,5 @@ class PController(SystemComponent):
         p_gain = self._p_gain
 
         @self.output_equation('action', numba_compile=numba_compile)
-        def p_control(local_state, error_input):
+        def p_control(t, error_input):
             return p_gain * error_input

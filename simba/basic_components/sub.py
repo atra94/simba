@@ -13,7 +13,7 @@ class Sub(core.SystemComponent):
 
     def compile(self, numba_compile=True):
         @self.output_equation('Out', numba_compile=numba_compile)
-        def subtract(local_state, in1, in2):
+        def subtract(t, in1, in2):
             return in1 - in2
 
     def __call__(self, in1, in2):

@@ -48,7 +48,8 @@ def _create_2_input_fct(state_equation, input_functions, local_state_indices):
         local_state = global_state[local_state_indices]
         input_0 = input_functions[0](t, global_state)
         input_1 = input_functions[1](t, global_state)
-        global_derivatives[local_state_indices] = state_equation(t, local_state, input_0, input_1)
+        result = state_equation(t, local_state, input_0, input_1)
+        global_derivatives[local_state_indices] = result
     return mapping
 
 

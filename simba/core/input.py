@@ -85,7 +85,8 @@ class Input:
 
     def compile(self):
         assert self._external_output is not None or self._default_value is not None, \
-            'Unconnected Input: Either an Output has to be connected to the input or a default value has to be set.'
+            f'Unconnected Input {self._component.name}.{self._name}:' \
+            f' Either an Output has to be connected to the input or a default value has to be set.'
         if self._external_output is not None:
             if not self._external_output.compiled:
                 self._external_output.compile()

@@ -25,7 +25,7 @@ class SystemComponent:
         return self._state
 
     @property
-    def local_state_indices(self):
+    def local_state_slice(self):
         return self._state.local_state_slice if self._state is not None else slice(0)
 
     def __init__(self, name: str, inputs=(), outputs=(), state=None):
@@ -47,7 +47,7 @@ class SystemComponent:
             if numba_compile:
                 output_dtype = self._outputs[output_name].dtype
                 time_dtype = nb.float64
-                input_dtypes = tuple(inp.dtype for inp in self._state.system_inputs)
+                input_dtypes = tuple(inp.dtype for inp in self._outputs[output_name].system_inputs)
                 if self._state is not None:
                     state_dtype = self._state.dtype
                     signature = output_dtype(time_dtype, state_dtype, *input_dtypes)

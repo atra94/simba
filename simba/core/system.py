@@ -9,7 +9,7 @@ class System:
 
     @property
     def system_equation(self):
-        assert self._compiled, 'The system has to be compiled before accessing the system equation.'
+        assert self._system_equation is not None, 'The system has to be compiled before accessing the system equation.'
         return self._system_equation
 
     @property
@@ -21,6 +21,8 @@ class System:
         return self._state_length
 
     def __init__(self, components):
+        namelist = [component.name for component in components]
+        assert len(set(namelist)) == len(namelist), 'Duplicate names in the components. Use all unique names.'
         self._compiled = False
         self._system_equation = None
 
@@ -60,12 +62,12 @@ class System:
 
     def compile(self, numba_compile=True):
         start_index = 0
-
+        for state in self._states.values():
+            state.local_state_slice = slice(start_index, start_index + state.size)
+            start_index += state.size
         for component in self._components.values():
             component.compile(numba_compile=numba_compile)
         for state in self._states.values():
-            state.local_state_indices = slice(start_index, start_index+state.size)
-            start_index += state.size
             state.compile()
         for output in self._outputs.values():
             output.compile()
@@ -77,7 +79,7 @@ class System:
         def system_equation(t, y):
             derivatives = np.zeros(self._state_length, dtype=float)
             for state_function in state_functions:
-                derivatives = state_function(t, y, derivatives)
+                state_function(t, y, derivatives)
             return derivatives
 
         self._system_equation = system_equation
