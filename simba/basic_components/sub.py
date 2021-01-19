@@ -1,11 +1,10 @@
-import numba as nb
-
 import simba.core as core
+from simba.types import float_array
 
 
 class Sub(core.SystemComponent):
 
-    def __init__(self, name='sub', size=1, dtype=nb.types.Array(nb.float32, 1, 'C')):
+    def __init__(self, name='sub', size=1, dtype=float_array):
         in1 = core.Input(self, name='In1', size=size, accepted_dtypes=(dtype,))
         in2 = core.Input(self, name='In2', size=size, accepted_dtypes=(dtype,))
         out = core.Output(self, name='Out', size=size, dtype=dtype, system_inputs=(in1, in2))

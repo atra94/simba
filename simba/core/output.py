@@ -1,7 +1,7 @@
-import numba as nb
 
 from .input import Input
 from simba.core.function_factories.output_function_factory import create_output_function
+from simba.types import float_array
 
 
 class Output:
@@ -46,7 +46,7 @@ class Output:
     def output_equation(self, equation):
         self._output_equation = equation
 
-    def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=nb.types.Array(nb.float32, 1, 'C')):
+    def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=float_array):
         self._component = component
         self._size = size
         self._name = name

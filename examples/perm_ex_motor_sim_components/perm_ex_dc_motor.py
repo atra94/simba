@@ -2,6 +2,7 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output, State
+from simba.types import float_array
 
 
 class PermanentlyExcitedDCMotor(SystemComponent):
@@ -18,13 +19,13 @@ class PermanentlyExcitedDCMotor(SystemComponent):
     }
 
     def __init__(self, name='PermExDCMotor', parameter=None):
-        voltage_input = Input(self, name='u', accepted_dtypes=(nb.types.Array(nb.float32, 1, 'C'),), size=1)
-        speed_input = Input(self, name='omega', accepted_dtypes=(nb.types.Array(nb.float32, 1, 'C'),), size=1)
+        voltage_input = Input(self, name='u', accepted_dtypes=(float_array,), size=1)
+        speed_input = Input(self, name='omega', accepted_dtypes=(float_array,), size=1)
         current_output = Output(
-            self, name='i', dtype=nb.types.Array(nb.float32, 1, 'C'), size=1, signal_names=('i',), system_inputs=()
+            self, name='i', dtype=nb.float64[:], size=1, signal_names=('i',), system_inputs=()
         )
         torque_output = Output(
-            self, name='T', dtype=nb.types.Array(nb.float32, 1, 'C'), size=1, signal_names=('T',), system_inputs=()
+            self, name='T', dtype=nb.float64[:], size=1, signal_names=('T',), system_inputs=()
         )
         state = State(
             self, size=1, inputs=(voltage_input, speed_input)
@@ -47,7 +48,7 @@ class PermanentlyExcitedDCMotor(SystemComponent):
         psi_e = self._parameter['psi_e']
         model_parameters = np.array([
             -psi_e, -r_a, 1.0
-        ], dtype=np.float32) / l_a
+        ]) / l_a
 
         @self.state_equation(numba_compile=numba_compile)
         def ode(t, local_state, u, omega):

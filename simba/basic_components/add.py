@@ -1,11 +1,12 @@
 import numba as nb
 
 import simba.core as core
+from simba.types import float_array
 
 
 class Add(core.SystemComponent):
 
-    def __init__(self, name='add', size=1, dtype=nb.float64[:]):
+    def __init__(self, name='add', size=1, dtype=float_array):
         in1 = core.Input(self, name='In1', size=size, accepted_dtypes=(dtype,))
         in2 = core.Input(self, name='In2', size=size, accepted_dtypes=(dtype,))
         out = core.Output(self, name='Out', size=size, dtype=dtype, system_inputs=(in1, in2))

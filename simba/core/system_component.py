@@ -4,6 +4,7 @@ import numpy as np
 from .output import Output
 from .input import Input
 from .state import State
+from simba.types import float_
 
 
 class SystemComponent:
@@ -46,7 +47,7 @@ class SystemComponent:
         def wrapper(func):
             if numba_compile:
                 output_dtype = self._outputs[output_name].dtype
-                time_dtype = nb.float64
+                time_dtype = float_
                 input_dtypes = tuple(inp.dtype for inp in self._outputs[output_name].system_inputs)
                 if self._state is not None:
                     state_dtype = self._state.dtype
@@ -70,7 +71,7 @@ class SystemComponent:
         def wrapper(func):
             if numba_compile:
                 output_dtype = self._state.dtype
-                time_dtype = nb.float64
+                time_dtype = float_
                 state_dtype = self._state.dtype
                 input_dtypes = tuple(inp.dtype for inp in self._state.system_inputs)
                 signature = output_dtype(time_dtype, state_dtype, *input_dtypes)

@@ -1,5 +1,7 @@
 import numba as nb
 
+from simba.types import float_array, float_
+
 _registry = {}
 
 
@@ -20,7 +22,7 @@ def create_state_function(state_equation, input_functions, local_state_indices):
         fct = _create_arbitrary_function(state_equation, input_functions, local_state_indices)
     if type(state_equation) == nb.core.registry.CPUDispatcher\
             and all(type(in_fct) == nb.core.registry.CPUDispatcher for in_fct in input_functions):
-        signature = nb.none(nb.float32, nb.types.Array(nb.float32, 1, 'C'), nb.types.Array(nb.float32, 1, 'C'))
+        signature = nb.none(float_, float_array, float_array)
         fct = nb.njit(signature)(fct)
     return fct
 

@@ -2,17 +2,18 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output, State
+from simba.types import float_array
 
 
 class RotationalMechanicalLoad(SystemComponent):
 
-    def __init__(self, name='RotationalLoad', j=0.45):
-        driving_torque_input = Input(self, name='T', accepted_dtypes=(nb.types.Array(nb.float32, 1, 'C'),), size=1)
+    def __init__(self, name='RotationalLoad', j=0.05):
+        driving_torque_input = Input(self, name='T', accepted_dtypes=(float_array,), size=1)
         load_torque_input = Input(
-            self, name='T_L', accepted_dtypes=(nb.types.Array(nb.float32, 1, 'C'),), size=1, default_value=np.array([0.0])
+            self, name='T_L', accepted_dtypes=(float_array,), size=1, default_value=np.array([0.0])
         )
         speed_output = Output(
-            self, name='omega', dtype=nb.types.Array(nb.float32, 1, 'C'), size=1, signal_names=('omega',), system_inputs=()
+            self, name='omega', dtype=float_array, size=1, signal_names=('omega',), system_inputs=()
         )
         state = State(
             self, size=1, inputs=(driving_torque_input, load_torque_input)
@@ -28,11 +29,11 @@ class RotationalMechanicalLoad(SystemComponent):
         self._inputs['T_L'].connect(t_l)
 
     def compile(self, numba_compile=True):
-        _j = np.array(1 / self._j, dtype=np.float32)
+        j = self._j
 
         @self.state_equation(numba_compile=numba_compile)
         def ode(t, state, driving_torque, load_torque):
-            return (driving_torque - load_torque) * _j
+            return (driving_torque - load_torque) / j
 
         @self.output_equation('omega', numba_compile=numba_compile)
         def omega(t, local_state):

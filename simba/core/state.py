@@ -1,8 +1,8 @@
-import numba as nb
 import numpy as np
 
 from .input import Input
 from .function_factories.state_function_factory import create_state_function
+from simba.types import float_array
 
 
 class State:
@@ -56,7 +56,7 @@ class State:
     def compiled(self):
         return self._state_function is not None
 
-    def __init__(self, component, inputs, size, signal_names=None, dtype=nb.types.Array(nb.float32, 1, 'C')):
+    def __init__(self, component, inputs, size, signal_names=None, dtype=float_array):
         assert all(isinstance(input_, Input) for input_ in inputs)
         self._compiled = False
         self._state_equation = None

@@ -1,6 +1,8 @@
 import numba as nb
 import numpy as np
 
+from simba.types import float_array, float_
+
 _registry = {}
 
 
@@ -22,7 +24,7 @@ def create_output_function(output_equation, input_functions, local_state_slice, 
         fct = _create_arbitrary_function(output_equation, input_functions, local_state_slice)
     if type(output_equation) == nb.core.registry.CPUDispatcher\
             and all(type(in_fct) == nb.core.registry.CPUDispatcher for in_fct in input_functions):
-        signature = nb.types.Array(nb.float32, 1, 'C')(nb.float32, nb.types.Array(nb.float32, 1, 'C'))
+        signature = output_dtype(float_, float_array)
         fct = nb.njit(signature)(fct)
     return fct
 

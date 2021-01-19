@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-import numba as nb
 import numpy as np
+from scipy.integrate import solve_ivp
 
 from perm_ex_motor_sim_components import RotationalMechanicalLoad,\
     PermanentlyExcitedDCMotor, QuadraticLoadTorque, PController
@@ -13,7 +13,7 @@ start = time.time()
 
 
 def reference(t):
-    return np.array([100.0], dtype=np.float32) if t > 10.0 else np.array([50.0], dtype=np.float32)
+    return np.array([100.0]) if t > 10.0 else np.array([50.0])
 
 
 # Initialize Components
@@ -39,25 +39,17 @@ system_equation = system.system_equation
 
 print('Compilation Time', time.time() - start)
 # Simulate the system equation
-system_equation(0.0, np.array([0.0, 0.0], dtype=np.float32))
+system_equation(0.0, np.array([0.0, 0.0]))
 print('One Call', time.time() - start)
-state = np.zeros(system.state_length, dtype=np.float32)
+state = np.zeros(system.state_length, dtype=float)
 step_size_tau = 1e-4
-simulation_time = 40.0
-all_states = np.zeros((int(simulation_time/step_size_tau), system.state_length), dtype=np.float32)
-ts = np.linspace(0, simulation_time, int(simulation_time/step_size_tau), dtype=np.float32)
+simulation_time = 20.0
 
-#signature = nb.none(nb.typeof(ts), nb.typeof(all_states), nb.typeof(state), nb.typeof(system_equation))
+ts = np.linspace(0, simulation_time, int(simulation_time/step_size_tau), dtype=float)
 
-#@nb.njit(signature)
-def simulation(ts, all_states, state, system_equation):
-    for i, t in enumerate(ts):
-        all_states[i] = state
-        state += system_equation(t, state) * step_size_tau
+results = solve_ivp(system_equation, (0, 40.0), np.array([0.0, 0.0], dtype=float), t_eval=ts)
 
-
-simulation(ts, all_states, state, system_equation)
 print('Whole Time', time.time() - start)
 # Plot the results
-plt.plot(ts, all_states[:, 1])
+plt.plot(ts, results.y[1])
 plt.show()
