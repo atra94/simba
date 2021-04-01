@@ -9,7 +9,7 @@ class TFunction(core.SystemComponent):
         self._fct = fct
         super().__init__(name, inputs=(), outputs=(out,))
 
-    def compile(self, numba_compile=True):
+    def compile(self, get_extra_index, numba_compile=True):
         self.output_equation('Out', numba_compile=numba_compile)(self._fct)
 
     def __call__(self):

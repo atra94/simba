@@ -73,18 +73,19 @@ class Output:
             self._external_inputs.remove(external_input)
             external_input.disconnect(self)
 
-    def compile(self):
+    def compile(self, global_extra_type):
         if self._compiled:
             return
         assert self._output_equation is not None, 'Output equation has to be set before compilation.'
         for input_ in self._system_inputs:
-            input_.compile()
+            input_.compile(global_extra_type)
         output_equation = self._output_equation
         input_functions = tuple([sys_input.function for sys_input in self._system_inputs])
 
         local_state_slice = self._component.local_state_slice
         self._output_function = create_output_function(
-            output_equation, input_functions, local_state_slice, self._dtype
+            output_equation, input_functions, local_state_slice, self._dtype, global_extra_type,
+            self._component.extra_index
         )
         self._compiled = True
 

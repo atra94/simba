@@ -10,7 +10,7 @@ class Gain(core.SystemComponent):
         self._gain = gain
         super().__init__(name, inputs=(in0,), outputs=(out0,))
 
-    def compile(self, numba_compile=True):
+    def compile(self, get_extra_index, numba_compile=True):
         gain = self._gain
 
         @self.output_equation('Out0', numba_compile=numba_compile)

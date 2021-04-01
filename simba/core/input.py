@@ -85,7 +85,7 @@ class Input:
     def __call__(self, output):
         self.connect(output)
 
-    def compile(self):
+    def compile(self, global_extra_type):
         if self._compiled:
             return
         assert self._external_output is not None or self._default_value is not None, \
@@ -93,7 +93,7 @@ class Input:
             f' Either an Output has to be connected to the input or a default value has to be set.'
         if self._external_output is not None:
             if not self._external_output.compiled:
-                self._external_output.compile()
+                self._external_output.compile(global_extra_type)
             self._function = self._external_output.output_function
         else:
             default_value = self._default_value

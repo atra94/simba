@@ -1,6 +1,8 @@
+import numba as nb
 import numpy as np
 
 from simba.core.function_factories.system_equation_factory import create_system_equation
+from simba.basic_components import Logger
 
 
 class System:
@@ -22,13 +24,21 @@ class System:
     def state_length(self):
         return self._state_length
 
+    @property
+    def extras(self):
+        return self._extras
+
     def __init__(self, components):
+        components_ = [component for component in components if not isinstance(component, Logger)]
+        loggers_ = [logger for logger in components if isinstance(logger, Logger)]
         namelist = [component.name for component in components]
         assert len(set(namelist)) == len(namelist), 'Duplicate names in the components. Use all unique names.'
         self._compiled = False
         self._system_equation = None
+        self._extras = ()
 
-        self._components = {component.name: component for component in components}
+        self._components = {component.name: component for component in components_}
+        self._loggers = {logger.name: logger for logger in loggers_}
         self._inputs = dict()
         self._outputs = dict()
         self._states = dict()
@@ -45,39 +55,36 @@ class System:
         )
         self._state_length = sum(state.size for state in self._states.values())
 
-    def _order_outputs(self):
-        ordered_outputs = []
-        remaining_outputs = self._outputs[:]
-        for output in self._outputs:
-            if len(output.system_inputs) == 0:
-                ordered_outputs.append(output)
-                remaining_outputs.remove(output)
-        i = 0
-        while len(remaining_outputs) > 0:
-            i = (i + 1) % len(remaining_outputs)
-            output = remaining_outputs[i]
-            if all(input_.connected_output in ordered_outputs for input_ in output.system_inputs):
-                ordered_outputs.append(output)
-                remaining_outputs.remove(output)
-
-        self._outputs = ordered_outputs
-
     def compile(self, numba_compile=True):
+
+        current_extra_idx = [0]
+        extras = []
+
+        def get_extra_index(extra):
+            extras.append(extra)
+            current_extra_idx[0] = current_extra_idx[0] + 1
+            return current_extra_idx[0] - 1
+
         start_index = 0
         for state in self._states.values():
             state.local_state_slice = np.arange(start_index, start_index + state.size)
             start_index += state.size
         for component in self._components.values():
-            component.compile(numba_compile=numba_compile)
+            component.compile(get_extra_index, numba_compile=numba_compile)
+        self._extras = tuple(extras)
+        extra_types = ()
+        for extra_ in self._extras:
+            extra_types = extra_types + (nb.typeof(extra_),)
+        global_extra_type = nb.types.Tuple(extra_types)
         for output in self._outputs.values():
-            output.compile()
+            output.compile(global_extra_type)
         for input_ in self._inputs.values():
-            input_.compile()
+            input_.compile(global_extra_type)
         for state in self._states.values():
-            state.compile()
+            state.compile(global_extra_type)
         state_functions = tuple([state.state_function for state in self._states.values()])
         state_length = self._state_length
 
-        system_equation = create_system_equation(state_functions, state_length)
+        system_equation = create_system_equation(state_functions, state_length, global_extra_type)
 
-        self._system_equation = system_equation
+        self._system_equation = lambda t, global_state: system_equation(t, global_state, self._extras)

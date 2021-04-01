@@ -4,7 +4,7 @@ import numpy as np
 from .output import Output
 from .input import Input
 from .state import State
-from simba.types import float_
+from simba.types import float_, float_array
 
 
 class SystemComponent:
@@ -29,6 +29,14 @@ class SystemComponent:
     def local_state_slice(self):
         return self._state.local_state_slice if self._state is not None else np.arange(0)
 
+    @property
+    def extra_index(self):
+        return self._extra_index
+
+    @property
+    def extra(self):
+        return self._extra
+
     def __init__(self, name: str, inputs=(), outputs=(), state=None):
         assert all(isinstance(o, Output) for o in outputs)
         assert all(isinstance(i, Input) for i in inputs)
@@ -38,8 +46,10 @@ class SystemComponent:
         self._name = name
         self._local_state_indices = np.array([], dtype=int)
         self._state = state
+        self._extra_index = None
+        self._extra = None
 
-    def compile(self):
+    def compile(self, get_extra_indices, numba_compile=True):
         raise NotImplementedError
 
     def output_equation(self, output_name: str, numba_compile: bool = True):
@@ -48,18 +58,15 @@ class SystemComponent:
             if numba_compile:
                 output_dtype = self._outputs[output_name].dtype
                 time_dtype = float_
-                input_dtypes = tuple(inp.dtype for inp in self._outputs[output_name].system_inputs)
+                input_signature = [time_dtype]
                 if self._state is not None:
-                    state_dtype = self._state.dtype
-                    if len(input_dtypes) > 0:
-                        signature = output_dtype(time_dtype, state_dtype, *input_dtypes)
-                    else:
-                        signature = output_dtype(time_dtype, state_dtype)
-                else:
-                    if len(input_dtypes) > 0:
-                        signature = output_dtype(time_dtype, *input_dtypes)
-                    else:
-                        signature = output_dtype(time_dtype)
+                    input_signature.append(self._state.dtype)
+                if self._extra is not None:
+                    input_signature.append(nb.typeof(self._extra))
+                for inp in self._outputs[output_name].system_inputs:
+                    input_signature.append(inp.dtype)
+                input_signature = tuple(input_signature)
+                signature = output_dtype(*input_signature)
                 func = nb.njit(signature)(func)
             self._outputs[output_name].output_equation = func
 
@@ -70,11 +77,14 @@ class SystemComponent:
 
         def wrapper(func):
             if numba_compile:
-                output_dtype = self._state.dtype
                 time_dtype = float_
-                state_dtype = self._state.dtype
-                input_dtypes = tuple(inp.dtype for inp in self._state.system_inputs)
-                signature = output_dtype(time_dtype, state_dtype, *input_dtypes)
+                input_signature = [time_dtype, self._state.dtype]
+                if self._extra is not None:
+                    input_signature.append(nb.typeof(self._extra))
+                for inp in self._state.system_inputs:
+                    input_signature.append(inp.dtype)
+                input_signature = tuple(input_signature)
+                signature = float_array(*input_signature)
                 func = nb.njit(signature)(func)
             self._state.state_equation = func
 

@@ -69,14 +69,16 @@ class State:
         self._component = component
         self._local_state_slice = None
 
-    def compile(self):
+    def compile(self, global_extra_type):
         if self._compiled:
             return
         assert self._local_state_slice is not None, 'State indices have to be set before compilation.'
         assert self.state_equation is not None, 'The state equation has to be set before compilation.'
         state_equation = self._state_equation
         for input_ in self._system_inputs:
-            input_.compile()
+            input_.compile(global_extra_type)
         input_functions = tuple([input_.function for input_ in self._system_inputs])
-        self._state_function = create_state_function(state_equation, input_functions, self.local_state_slice)
+        self._state_function = create_state_function(
+            state_equation, input_functions, self.local_state_slice, global_extra_type, self._component.extra_index
+        )
         self._compiled = True

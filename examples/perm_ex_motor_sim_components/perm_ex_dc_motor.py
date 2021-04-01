@@ -12,10 +12,10 @@ class PermanentlyExcitedDCMotor(SystemComponent):
         return self._parameter
 
     _default_motor_parameter = {
-        'r_a': 25.0, # Ohm Omega
-        'l_a': 3.438e-2,  # Henry H
-        'psi_e': 18,  # Weber Wb
-        'j_rotor': 0.017,  # kg/ms^2
+        'r_a': 16e-3,
+        'l_a': 19e-6,
+        'psi_e': 0.165,
+        'j_rotor': 0.025
     }
 
     def __init__(self, name='PermExDCMotor', parameter=None):
@@ -41,7 +41,7 @@ class PermanentlyExcitedDCMotor(SystemComponent):
         self._inputs['u'].connect(u)
         self._inputs['omega'].connect(omega)
 
-    def compile(self, numba_compile=True):
+    def compile(self, get_extra_index, numba_compile=True):
 
         l_a = self._parameter['l_a']
         r_a = self._parameter['r_a']

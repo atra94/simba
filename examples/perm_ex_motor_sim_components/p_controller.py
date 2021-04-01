@@ -22,8 +22,8 @@ class PController(SystemComponent):
     def __call__(self, error):
         self._inputs['error'].connect(error)
 
-    def compile(self, numba_compile=True):
-        p_gain = np.array(self._p_gain, dtype=np.float64)
+    def compile(self, get_extra_index, numba_compile=True):
+        p_gain = self._p_gain
 
         @self.output_equation('action', numba_compile=numba_compile)
         def p_control(t, error_input):

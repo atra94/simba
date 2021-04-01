@@ -23,7 +23,7 @@ class QuadraticLoadTorque(SystemComponent):
     def __call__(self, omega):
         self._inputs['omega'].connect(omega)
 
-    def compile(self, numba_compile=True):
+    def compile(self, get_extra_index, numba_compile=True):
         a = self._a
         b = self._b
         c = self._c

@@ -12,7 +12,7 @@ class Add(core.SystemComponent):
         out = core.Output(self, name='Out', size=size, dtype=dtype, system_inputs=(in1, in2))
         super().__init__(name, inputs=(in1, in2), outputs=(out,))
 
-    def compile(self, numba_compile=True):
+    def compile(self, get_extra_index, numba_compile=True):
         @self.output_equation('Out', numba_compile=numba_compile)
         def subtract(t, in1, in2):
             return in1 + in2
