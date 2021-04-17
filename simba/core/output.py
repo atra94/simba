@@ -19,7 +19,7 @@ class Output:
         return self._size
 
     @property
-    def compiled(self):
+    def compiled(self) -> bool:
         return self._output_function is not None
 
     @property
@@ -46,6 +46,14 @@ class Output:
     def output_equation(self, equation):
         self._output_equation = equation
 
+    @property
+    def extra_index(self) -> None or int:
+        return self._extra_index
+
+    @extra_index.setter
+    def extra_index(self, value):
+        self._extra_index = int(value)
+
     def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=float_array):
         self._component = component
         self._size = size
@@ -59,6 +67,7 @@ class Output:
         self._global_state_indices = None
         self._output_function = None
         self._compiled = False
+        self._extra_index = None
 
     def __call__(self, external_input):
         self.connect(external_input)
@@ -85,7 +94,7 @@ class Output:
         local_state_slice = self._component.local_state_slice
         self._output_function = create_output_function(
             output_equation, input_functions, local_state_slice, self._dtype, global_extra_type,
-            self._component.extra_index
+            self._extra_index
         )
         self._compiled = True
 

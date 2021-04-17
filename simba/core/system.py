@@ -3,6 +3,7 @@ import numpy as np
 
 from simba.core.function_factories.system_equation_factory import create_system_equation
 from simba.basic_components import Logger
+from simba.core.system_components import SystemInput, SystemOutput
 
 
 class System:
@@ -28,7 +29,15 @@ class System:
     def extras(self):
         return self._extras
 
-    def __init__(self, components):
+    @property
+    def system_input(self):
+        return self._system_input
+
+    @property
+    def system_output(self):
+        return self._system_output
+
+    def __init__(self, components, system_inputs=(), system_outputs=()):
         components_ = [component for component in components if not isinstance(component, Logger)]
         loggers_ = [logger for logger in components if isinstance(logger, Logger)]
         namelist = [component.name for component in components]
@@ -36,6 +45,12 @@ class System:
         self._compiled = False
         self._system_equation = None
         self._extras = ()
+
+        self._system_input = SystemInput(system_inputs)
+        components_.append(self._system_input)
+
+        self._system_output = SystemOutput(system_outputs)
+        components_.append(self._system_output)
 
         self._components = {component.name: component for component in components_}
         self._loggers = {logger.name: logger for logger in loggers_}
@@ -54,6 +69,12 @@ class System:
             component for component in components if component.state is not None
         )
         self._state_length = sum(state.size for state in self._states.values())
+
+    def set_input(self, inputs):
+        self._system_input.set_input(inputs)
+
+    def get_output(self, t, state):
+        return self._system_output(t, state, self._extras)
 
     def compile(self, numba_compile=True):
 

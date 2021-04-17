@@ -1,26 +1,40 @@
-from gym.spaces import Tuple
-
-from ..system_component import SystemComponent
 from ..output import Output
+from ..system_component import SystemComponent
+from ...types import initial_value
 
 
 class SystemInput(SystemComponent):
 
     @property
-    def input_space(self):
-        return self._input_space
+    def input_sizes(self):
+        return self._input_sizes
+
+    @property
+    def input_dtypes(self):
+        return self._input_dtypes
 
     def __init__(self, inputs):
-        self._name = 'system_input'
-        self._input_space = Tuple((input_.space for input_ in inputs))
-        self._system_input = self._input_space.sample()
+        self._input_sizes = (input_.size for input_ in inputs)
+        self._input_dtypes = (input_.dtype for input_ in inputs)
         outputs = []
         for (i, input_) in enumerate(inputs):
-            def output_eq(*_):
-                return self._system_input[i]
-            outputs.append(Output(self, input_.name, output_eq, (), input_.signal_names, input_.space, input_.unit))
-        super().__init__((), outputs)
+            output = Output(
+                self, input_.name, (), input_.size, input_.signal_names, input_.unit, input_.accepted_dtypes[0]
+            )
+            output.connect(input_)
 
-    def set_input(self, system_input):
-        assert system_input in self._input_space
-        self._system_input = system_input
+        super().__init__('system_input', (), outputs)
+
+    def set_input(self, system_inputs, global_extras):
+        for system_input, output in zip(self._outputs, system_inputs):
+            extra = global_extras[output.extra_index]
+            extra[:] = system_input
+
+    def compile(self, get_extra_index, numba_compile=True):
+        for output in self._outputs:
+            output_extra = initial_value(output.dtype, output.size)
+            output.extra_index = get_extra_index(output_extra)
+
+            @self.output_equation(output.name, numba_compile=numba_compile)
+            def output_equation(t, extra):
+                return extra

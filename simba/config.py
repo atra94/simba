@@ -2,8 +2,7 @@
 _t_diff = 1e-6
 
 
-@property
-def t_diff():
+def get_t_diff():
     """The global time jitter for time-based discontinuous components.
 
     As the majority of ODE-solvers do not hit the evaluation times perfectly, it may happen that the ODE is evaluated
@@ -16,7 +15,6 @@ def t_diff():
     return _t_diff
 
 
-@t_diff.setter
-def t_diff(value: [float, int]):
+def set_t_diff(value: [float, int]):
     global _t_diff
     _t_diff = float(value)

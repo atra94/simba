@@ -1,5 +1,4 @@
 import numba as nb
-import numpy as np
 
 from simba.types import float_array, float_
 
@@ -36,108 +35,40 @@ def create_output_function(
     return fct
 
 
-@_register(False, 0, False)
-def _create_stateless_0_input_fct(output_equation, input_functions, local_state_indices, extra_index):
-    def mapping(t, global_state, global_extras):
-        return output_equation(t)
-    return mapping
+def _create_arbitrary_function(output_equation, input_functions, local_state_indices, extra_data_index):
+    """
+        exec(result, extra_data_index, output_equation, input_functions, local_state_indices):
 
+            # Write to local variables to speed up numba computation significantly
+            # input_function_{i} = input_functions[{i}]
+            input_function_0 = input_functions[0]
+            input_function_1 = input_functions[1]
+            # ...
 
-@_register(False, 1, False)
-def _create_stateless_1_input_fct(output_equation, input_functions, local_state_indices, extra_index):
+            def mapping(t, global_state, global_derivatives, global_extras):
 
-    input_fct_0 = input_functions[0]
+                # input_{i} = input_function_{i}(t, global_state, global_extra_data)
+                input_0 = input_function_0(t, global_state, global_extra_data)
+                input_1 = input_function_1(t, global_state, global_extra_data)
+                # ...
 
-    def mapping(t, global_state, global_extras):
-        input_0 = input_fct_0(t, global_state, global_extras)
-        return output_equation(t, input_0)
-    return mapping
+                # Read local state and extra data from the global data structures
+                # Reading Extras and local state is optional, and executed only if the component has a state and extra
+                # data
+                local_state = global_state[local_state_indices]
+                extra_data = global_extra_data[extra_data_index]
 
+                return output_equation(t, local_state, extra_data, input_0, input_1)
 
-@_register(False, 2, False)
-def _create_stateless_2_input_fct(output_equation, input_functions, local_state_indices, extra_index):
-
-    input_fct_0 = input_functions[0]
-    input_fct_1 = input_functions[1]
-
-    def mapping(t, global_state, global_extras):
-        input_0 = input_fct_0(t, global_state, global_extras)
-        input_1 = input_fct_1(t, global_state, global_extras)
-        return output_equation(t, input_0, input_1)
-    return mapping
-
-
-@_register(False, 3, False)
-def _create_stateless_3_input_fct(output_equation, input_functions, local_state_indices, extra_index):
-
-    input_fct_0 = input_functions[0]
-    input_fct_1 = input_functions[1]
-    input_fct_2 = input_functions[2]
-
-    def mapping(t, global_state, global_extras):
-        input_0 = input_fct_0(t, global_state, global_extras)
-        input_1 = input_fct_1(t, global_state, global_extras)
-        input_2 = input_fct_2(t, global_state, global_extras)
-        return output_equation(t, input_0, input_1, input_2)
-    return mapping
-
-
-@_register(True, 0, False)
-def _create_stateful_0_input_fct(output_equation, input_functions, local_state_indices: np.ndarray, extra_index):
-
-    def mapping(t, global_state: np.ndarray, extras):
-        return output_equation(t, global_state[local_state_indices])
-    return mapping
-
-
-@_register(True, 1, False)
-def _create_stateful_1_input_fct(output_equation, input_functions, local_state_indices, extra_index):
-
-    input_function_0 = input_functions[0]
-
-    def mapping(t, global_state, global_extras):
-        local_state = global_state[local_state_indices]
-        input_0 = input_function_0(t, global_state, global_extras)
-        return output_equation(t, local_state, input_0)
-    return mapping
-
-
-@_register(True, 2, False)
-def _create_stateful_2_input_fct(output_equation, input_functions, local_state_indices, extra_index):
-
-    input_function_0 = input_functions[0]
-    input_function_1 = input_functions[1]
-
-    def mapping(t, global_state, global_extras):
-        local_state = global_state[local_state_indices]
-        input_0 = input_function_0(t, global_state, global_extras)
-        input_1 = input_function_1(t, global_state, global_extras)
-        return output_equation(t, local_state, input_0, input_1)
-    return mapping
-
-
-@_register(True, 3, False)
-def _create_stateful_3_input_fct(output_equation, input_functions, local_state_indices):
-    input_function_0 = input_functions[0]
-    input_function_1 = input_functions[1]
-    input_function_2 = input_functions[2]
-
-    def mapping(t, global_state, global_extras):
-        local_state = global_state[local_state_indices]
-        input_0 = input_function_0(t, global_state, global_extras)
-        input_1 = input_function_1(t, global_state, global_extras)
-        input_2 = input_function_2(t, global_state, global_extras)
-        return output_equation(t, local_state, input_0, input_1, input_2)
-    return mapping
-
-
-def _create_arbitrary_function(output_equation, input_functions, local_state_indices, extra_index):
+            # Append the generated function to the (empty) result list to pass it back to the caller
+            result.append(mapping)
+        """
 
     def spacing(no_of_spaces):
         return ' ' * no_of_spaces
 
     prior = ""
-    header = "def mapping(t, global_state, global_extras):\n"
+    header = "def mapping(t, global_state, global_extra_data):\n"
 
     if len(local_state_indices) > 0:
         state_reader = spacing(1) + "local_state = global_state[local_state_indices]\n"
@@ -150,10 +81,10 @@ def _create_arbitrary_function(output_equation, input_functions, local_state_ind
     input_signature = ""
     for i in range(len(input_functions)):
         prior += f"input_function_{i} = input_functions[{i}]\n"
-        input_reader += spacing(1) + f'input_{i} = input_function_{i}(t, global_state, global_extras)\n'
+        input_reader += spacing(1) + f'input_{i} = input_function_{i}(t, global_state, global_extra_data)\n'
         input_signature += f" input_{i}, "
-    if extra_index is not None:
-        extras_reader = spacing(1) + f"extra = global_extras[extra_index]\n"
+    if extra_data_index is not None:
+        extras_reader = spacing(1) + f"extra = global_extra_data[extra_data_index]\n"
         extras_signature = "extra, "
     else:
         extras_reader = ""
@@ -167,9 +98,10 @@ def _create_arbitrary_function(output_equation, input_functions, local_state_ind
         fct,
         {
             'result': f,
-            'extra_index': extra_index,
+            'extra_data_index': extra_data_index,
             'output_equation': output_equation,
-            'input_functions': input_functions
+            'input_functions': input_functions,
+            'local_state_indices': local_state_indices
         }
     )
     return f[0]
