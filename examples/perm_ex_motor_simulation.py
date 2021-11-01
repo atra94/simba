@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import numba as nb
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, ode
 
 from perm_ex_motor_sim_components import RotationalMechanicalLoad,\
     PermanentlyExcitedDCMotor, QuadraticLoadTorque, PController, PIController, DiscreteTimePIController
@@ -12,17 +12,25 @@ import time
 
 start = time.time()
 
-amplitude = np.array([100.0])
+amplitude = nb.float64([100.0])
+step_size_tau = 1e-4
+simulation_time = 40.0
+half = nb.float64([.5])
+full = nb.float64([1.])
 
 
-def reference(t):
-    return amplitude * np.cos(t)
+def reference(t_):
+    #if t_ < 0.5 * simulation_time:
+    #    return half * amplitude
+    #else:
+    #    return full * amplitude
+    return amplitude * np.cos(t_)
 
 
 # Initialize Components
 reference_generation = TFunction(reference)
 sub = Sub()
-p_controller = PIController(p_gain=1.0, i_gain=25.0)
+p_controller = PIController(p_gain=1.0, i_gain=2.0)
 motor = PermanentlyExcitedDCMotor()
 load_torque = QuadraticLoadTorque()
 load = RotationalMechanicalLoad()
@@ -50,23 +58,39 @@ print('Compilation Time', time.time() - start)
 system_equation(0.0, np.array([0.0, 0.0]))
 print('One Call', time.time() - start)
 state = np.zeros(system.state_length, dtype=float)
-step_size_tau = 1e-4
-simulation_time = 40.0
+
 
 states = []
 
 ts = np.linspace(0, simulation_time, int(simulation_time/step_size_tau), dtype=float)
 state = np.array([0.0, 0.0])
-for t in ts:
-    #states.append(system.get_output(t, state))
+o = ode(system_equation)
+o.set_integrator('dopri5', first_step=step_size_tau/10)
+counter = 0
+t_ = []
+
+
+def solout(t, y):
+    t_.append(t)
+    global counter
+    counter += 1
+
+
+o.set_solout(solout)
+o.set_initial_value(state, 0.0)
+for i, t in enumerate(ts):
     states.append(state)
-    dev = system_equation(t, state)
-    state = state + dev * step_size_tau
-states = np.array(states).T.reshape(-1, len(ts))
-#results = solve_ivp(system_equation, (0, simulation_time), state, max_step=1e-4, method='RK23')
-#states = results.y
+    state = o.integrate(t)
+    if not o.successful():
+        print(i)
+        o.set_initial_value(state, t)
+
+#states = np.array(states).T.reshape(-1, len(ts))
+#o.integrate(simulation_time)
+print(o.successful())
+print(counter)
 print('Whole Time', time.time() - start)
 # Plot the results
-plt.plot(ts, states[0], marker='*')
-plt.plot(ts, states[1]*0.5, marker='*')
-plt.show()
+#plt.plot(states[0], marker='*')
+#plt.plot(states[1]*0.5, marker='*')
+#plt.show()
