@@ -1,14 +1,15 @@
 import numba as nb
-import numpy as np
+from typing import Callable, Any
 
+import simba
 from simba.core import SystemComponent, Input, Output, State
-from simba.types import float_, float_array
+from simba.types import float_array
 
 
 class PermanentlyExcitedDCMotor(SystemComponent):
 
     @property
-    def parameter(self):
+    def parameter(self) -> dict:
         return self._parameter
 
     _default_motor_parameter = {
@@ -18,7 +19,7 @@ class PermanentlyExcitedDCMotor(SystemComponent):
         'j_rotor': 0.025
     }
 
-    def __init__(self, name='PermExDCMotor', parameter=None):
+    def __init__(self, name: str = 'PermExDCMotor', parameter: dict or None = None):
         voltage_input = Input(self, name='u', accepted_dtypes=(float_array,), size=1)
         speed_input = Input(self, name='omega', accepted_dtypes=(float_array,), size=1)
         current_output = Output(
@@ -37,11 +38,11 @@ class PermanentlyExcitedDCMotor(SystemComponent):
             name, outputs=(current_output, torque_output), inputs=(voltage_input, speed_input), state=state
         )
 
-    def __call__(self, u, omega):
+    def __call__(self, u: simba.core.Input, omega: simba.core.Input):
         self._inputs['u'].connect(u)
         self._inputs['omega'].connect(omega)
 
-    def compile(self, get_extra_index, numba_compile=True):
+    def compile(self, get_extra_index: Callable[[Any], int], numba_compile: bool = True):
 
         l_a = self._parameter['l_a']
         r_a = self._parameter['r_a']
@@ -53,8 +54,7 @@ class PermanentlyExcitedDCMotor(SystemComponent):
         @self.state_equation(numba_compile=numba_compile)
         def ode(t, local_state, u, omega):
             # i = local_state[0]
-            return np.array([np.dot(model_parameters, np.concatenate((omega, local_state, u)))])
-            #return model_parameters[0] * omega + model_parameters[1] * local_state + model_parameters[2] * u
+            return model_parameters[0] * omega + model_parameters[1] * local_state + model_parameters[2] * u
 
         @self.output_equation('T', numba_compile=numba_compile)
         def torque(t, local_state):

@@ -29,7 +29,7 @@ class PIController(SystemComponent):
 
     def compile(self, get_extra_index, numba_compile=True):
 
-        self._extra = np.array([
+        self._extra = np.ascontiguousarray([
             0.0,  # last t value
             0.0,  # last error
             0.0,  # integrated value

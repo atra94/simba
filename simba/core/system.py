@@ -80,9 +80,11 @@ class System:
 
         current_extra_idx = [0]
         extras = []
+        extra_types = []
 
         def get_extra_index(extra):
             extras.append(extra)
+            extra_types.append(nb.typeof(extra))
             current_extra_idx[0] = current_extra_idx[0] + 1
             return current_extra_idx[0] - 1
 
@@ -92,10 +94,19 @@ class System:
             start_index += state.size
         for component in self._components.values():
             component.compile(get_extra_index, numba_compile=numba_compile)
+
+        for output in self._outputs.values():
+            if output.caching_time is not None:
+                output.cache_index = current_extra_idx[0]
+                cache = nb.float64([0.] * output.size)
+                caching_time = nb.float64([-np.inf])
+                extras.append(caching_time)
+                extras.append(cache)
+                extra_types.append(nb.typeof(caching_time))
+                extra_types.append(nb.typeof(cache))
+                current_extra_idx[0] += 2
         self._extras = tuple(extras)
-        extra_types = ()
-        for extra_ in self._extras:
-            extra_types = extra_types + (nb.typeof(extra_),)
+        extra_types = tuple(extra_types)
         global_extra_type = nb.types.Tuple(extra_types)
         for output in self._outputs.values():
             output.compile(global_extra_type)

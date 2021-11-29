@@ -1,6 +1,6 @@
-
 from .input import Input
 from simba.core.function_factories.output_function_factory import create_output_function
+from simba.core.function_factories.output_function_factory import create_cached_output_function
 from simba.types import float_array
 
 
@@ -54,6 +54,23 @@ class Output:
     def extra_index(self, value):
         self._extra_index = int(value)
 
+    @property
+    def cache_index(self) -> None or int:
+        return self._cache_index
+
+    @cache_index.setter
+    def cache_index(self, value:int):
+        self._cache_index = int(value)
+
+    @property
+    def caching_time(self) -> None or float:
+        return self._caching_time
+
+    @caching_time.setter
+    def caching_time(self, value: float):
+        assert value >= 0.0, 'Caching Time must be >= 0'
+        self._caching_time = float(value)
+
     def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=float_array):
         self._component = component
         self._size = size
@@ -68,6 +85,8 @@ class Output:
         self._output_function = None
         self._compiled = False
         self._extra_index = None
+        self._caching_time = None
+        self._cache_index = None
 
     def __call__(self, external_input):
         self.connect(external_input)
@@ -92,10 +111,16 @@ class Output:
         input_functions = tuple([sys_input.function for sys_input in self._system_inputs])
 
         local_state_slice = self._component.local_state_slice
-        self._output_function = create_output_function(
-            output_equation, input_functions, local_state_slice, self._dtype, global_extra_type,
-            self._extra_index
-        )
+        if self.cache_index is None:
+            self._output_function = create_output_function(
+                output_equation, input_functions, local_state_slice, self._dtype, global_extra_type,
+                self._extra_index
+            )
+        else:
+            self._output_function = create_cached_output_function(
+                output_equation, input_functions, local_state_slice, self._dtype, global_extra_type,
+                self._extra_index, self._cache_index, self._caching_time
+            )
         self._compiled = True
 
         """ Future Content

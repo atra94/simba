@@ -4,8 +4,11 @@ import numba as nb
 from scipy.integrate import solve_ivp, ode
 
 from perm_ex_motor_sim_components import RotationalMechanicalLoad,\
-    PermanentlyExcitedDCMotor, QuadraticLoadTorque, PController, PIController, DiscreteTimePIController
-from simba.basic_components import Sub, TFunction
+    QuadraticLoadTorque, PController, PIController, DiscreteTimePIController
+from simba.electric_motors.dc_motors.permanently_excited_dc_motor import PermanentlyExcitedDCMotor
+from simba.electric_motors.dc_motors.shunt_dc_motor import ShuntDCMotor
+from simba.electric_motors.dc_motors.series_dc_motor import SeriesDCMotor
+from simba.basic_components import Sub, TFunction, Clip
 from simba.core import System
 
 import time
@@ -30,15 +33,17 @@ def reference(t_):
 # Initialize Components
 reference_generation = TFunction(reference)
 sub = Sub()
-p_controller = PIController(p_gain=1.0, i_gain=2.0)
-motor = PermanentlyExcitedDCMotor()
+controller = PIController(p_gain=1.0, i_gain=0.0)
+clip = Clip(0, 1)
+motor = SeriesDCMotor()
 load_torque = QuadraticLoadTorque()
 load = RotationalMechanicalLoad()
 
 # Connect Components
 sub(in1=reference_generation.outputs['Out'], in2=load.outputs['omega'])
-p_controller(error=sub.outputs['Out'])
-motor(u=p_controller.outputs['action'], omega=load.outputs['omega'])
+controller(error=sub.outputs['Out'])
+clip(in_=controller.outputs['action'])
+motor(u=clip.outputs['Out'], omega=load.outputs['omega'])
 load(t=motor.outputs['T'], t_l=load_torque.outputs['T_L'])
 load_torque(omega=load.outputs['omega'])
 print('Init Time:', time.time() - start)
@@ -49,13 +54,13 @@ sys_outputs = (
     motor.outputs['T'],
 )
 # Initialize and compile the dynamic system
-system = System((reference_generation, sub, p_controller, motor, load_torque, load), system_outputs=sys_outputs)
+system = System((reference_generation, sub, controller, motor, load_torque, load, clip), system_outputs=sys_outputs)
 system.compile(numba_compile=True)
 system_equation = system.system_equation
 
 print('Compilation Time', time.time() - start)
 # Simulate the system equation
-system_equation(0.0, np.array([0.0, 0.0]))
+#system_equation(0.0, np.array([0.0, 0.0]))
 print('One Call', time.time() - start)
 state = np.zeros(system.state_length, dtype=float)
 
@@ -76,21 +81,23 @@ def solout(t, y):
     counter += 1
 
 
-o.set_solout(solout)
+#o.set_solout(solout)
 o.set_initial_value(state, 0.0)
 for i, t in enumerate(ts):
     states.append(state)
     state = o.integrate(t)
-    if not o.successful():
-        print(i)
-        o.set_initial_value(state, t)
+    #state = state + system_equation(t, state) * step_size_tau
+    #if not o.successful():
+        #print(i)
+        #o.set_initial_value(state, t)
 
-#states = np.array(states).T.reshape(-1, len(ts))
+states = np.array(states).T#.reshape(-1, len(ts))
 #o.integrate(simulation_time)
 print(o.successful())
+print('Ts:', len(ts))
 print(counter)
 print('Whole Time', time.time() - start)
 # Plot the results
-#plt.plot(states[0], marker='*')
-#plt.plot(states[1]*0.5, marker='*')
-#plt.show()
+plt.plot(states[0], marker='*')
+plt.plot(states[1]*0.5, marker='*')
+plt.show()

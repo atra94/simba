@@ -7,7 +7,7 @@ float_array = nb.float64[:]
 
 int_ = nb.int32
 
-int_array = nb.int32[:]
+int_array = nb.int32[::1]
 
 
 def initial_value(type_, size):

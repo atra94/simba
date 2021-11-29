@@ -2,7 +2,7 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output
-from simba.types import float_array
+from simba.types import float_, float_array
 
 
 class QuadraticLoadTorque(SystemComponent):
@@ -28,9 +28,14 @@ class QuadraticLoadTorque(SystemComponent):
         b = self._b
         c = self._c
         epsilon = self._epsilon
+        tau = 1e-4
+        j_total = 1e-4
 
         @self.output_equation('T_L', numba_compile=numba_compile)
         def load_torque(t, omega):
             om = omega[0]
             sign_omega = 1 if om > epsilon else -1 if om < -epsilon else 0
-            return sign_omega * a + omega * b + sign_omega * omega**2 * c
+            a_ = sign_omega * a \
+                if abs(om) > a / j_total * tau \
+                else j_total / tau * om
+            return float_([a_ + om * b + sign_omega * om**2 * c])

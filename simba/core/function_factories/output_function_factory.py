@@ -45,7 +45,7 @@ def _create_arbitrary_function(output_equation, input_functions, local_state_ind
             input_function_1 = input_functions[1]
             # ...
 
-            def mapping(t, global_state, global_derivatives, global_extras):
+            def mapping(t, global_state, global_extras):
 
                 # input_{i} = input_function_{i}(t, global_state, global_extra_data)
                 input_0 = input_function_0(t, global_state, global_extra_data)
@@ -105,3 +105,27 @@ def _create_arbitrary_function(output_equation, input_functions, local_state_ind
         }
     )
     return f[0]
+
+
+def create_cached_output_function(
+    output_equation, input_functions, local_state_slice, output_dtype, global_extra_type,
+    extra_index, cache_index, caching_time
+):
+    output_function = create_output_function(
+        output_equation, input_functions, local_state_slice, output_dtype, global_extra_type, extra_index
+    )
+
+    def cached_output(t, global_state, global_extras):
+        t_last_cached = global_extras[cache_index][0]
+        if t <= t_last_cached + caching_time:
+            return global_extras[cache_index + 1]
+
+        result = output_function(t, global_state, global_extras)
+        global_extras[cache_index][:] = t
+        global_extras[cache_index + 1][:] = result
+        return result
+
+    if type(output_function) == nb.core.registry.CPUDispatcher:
+        signature = output_dtype(float_, float_array, global_extra_type)
+        cached_output = nb.njit(signature)(cached_output)
+    return cached_output
