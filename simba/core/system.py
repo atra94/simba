@@ -1,6 +1,7 @@
 import numba as nb
 import numpy as np
 
+import simba as sb
 from simba.core.function_factories.system_equation_factory import create_system_equation
 from simba.basic_components import Logger
 from simba.core.system_components import SystemInput, SystemOutput
@@ -52,26 +53,41 @@ class System:
         self._system_output = SystemOutput(system_outputs)
         components_.append(self._system_output)
 
-        self._components = {component.name: component for component in components_}
-        self._loggers = {logger.name: logger for logger in loggers_}
+        self._components = dict()
         self._inputs = dict()
         self._outputs = dict()
         self._states = dict()
-        for component in self._components.values():
+
+        def add_single_components_io(
+                component: sb.core.SystemComponent, output_dict, input_dict, state_dict, path: str
+        ):
             for output in component.outputs.values():
-                self._outputs[f'{component.name}.{output.name}'] = output
+                output_dict[f'{path}{component.name}.{output.name}'] = output
             for input_ in component.inputs.values():
-                self._inputs[f'{component.name}.{input_.name}'] = input_
+                input_dict[f'{path}{component.name}.{input_.name}'] = input_
             if component.state is not None:
-                self._states[f'{component.name}.State'] = component.state
+                state_dict[f'{path}{component.name}.State'] = component.state
+
+        def add_components(components__, component_dict, output_dict, input_dict, state_dict, path):
+            for component in components__:
+                component_dict[f'{path}{component.name}'] = component
+                add_single_components_io(component, output_dict, input_dict, state_dict, path)
+                if isinstance(component, sb.basic_components.Subsystem):
+                    add_components(
+                        component.components, component_dict, output_dict, input_dict, state_dict,
+                        f'{path}{component.name}.'
+                    )
+
+        add_components(components_, self._components, self._outputs, self._inputs, self._states, '')
+        self._loggers = {logger.name: logger for logger in loggers_}
 
         self._stateful_components = tuple(
-            component for component in components if component.state is not None
+            component for component in self._components.values() if component.state is not None
         )
         self._state_length = sum(state.size for state in self._states.values())
 
     def set_input(self, inputs):
-        self._system_input.set_input(inputs)
+        self._system_input.set_input(inputs, self._extras)
 
     def get_output(self, t, state):
         return self._system_output(t, state, self._extras)
@@ -89,14 +105,18 @@ class System:
             return current_extra_idx[0] - 1
 
         start_index = 0
+        # Set the state slice indices of the components
         for state in self._states.values():
             state.local_state_slice = np.arange(start_index, start_index + state.size)
             start_index += state.size
+
+        # Compile each component
         for component in self._components.values():
             component.compile(get_extra_index, numba_compile=numba_compile)
 
+        # Compile the outputs
         for output in self._outputs.values():
-            if output.caching_time is not None:
+            if output.caching_time is not None and output.cache_index is None:
                 output.cache_index = current_extra_idx[0]
                 cache = nb.float64([0.] * output.size)
                 caching_time = nb.float64([-np.inf])
