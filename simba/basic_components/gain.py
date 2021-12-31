@@ -1,12 +1,12 @@
 import simba.core as core
-from simba.types import float_array
+from simba.types import float_array, float_base_type
 
 
 class Gain(core.SystemComponent):
 
-    def __init__(self, gain=1.0, name='Gain', size=1, dtype=float_array):
-        in0 = core.Input(self, name='In0', size=size, accepted_dtypes=(dtype,))
-        out0 = core.Output(self, name='Out0', size=size, dtype=dtype, system_inputs=(in0,))
+    def __init__(self, gain=1.0, name='Gain', size=1, dtype=float_base_type):
+        in0 = core.Input(self, name='In0', size=size, dtype=dtype)
+        out0 = core.Output(self, name='Out0', size=size, dtype=dtype, component_inputs=(in0,))
         self._gain = gain
         super().__init__(name, inputs=(in0,), outputs=(out0,))
 

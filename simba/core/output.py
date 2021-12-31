@@ -1,21 +1,27 @@
-
+import numpy as np
+from typing import List
 from .input import Input
-from simba.core.function_factories.output_function_factory import create_output_function
-from simba.types import float_array
+import simba as sb
+import simba.core.function_factories.output_function_factory as off
+from simba.core.interfaces import ISliceHolder
+from typing import Callable, Iterable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from simba.core import Input, SystemComponent
 
 
-class Output:
+class Output(ISliceHolder):
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
     @property
-    def dtype(self):
+    def dtype(self) -> type:
         return self._dtype
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._size
 
     @property
@@ -23,86 +29,68 @@ class Output:
         return self._output_function is not None
 
     @property
-    def output_function(self):
+    def output_function(self) -> Callable or None:
         return self._output_function
 
     @property
-    def system_inputs(self):
-        return self._system_inputs
+    def component_inputs(self) -> List['Input']:
+        return self._component_inputs
 
     @property
-    def component(self):
+    def component(self) -> 'SystemComponent':
         return self._component
 
     @property
-    def external_inputs(self):
+    def external_inputs(self) -> Iterable['Input']:
         return self._external_inputs
 
     @property
-    def output_equation(self):
+    def output_equation(self) -> Callable:
         return self._output_equation
 
     @output_equation.setter
-    def output_equation(self, equation):
+    def output_equation(self, equation: Callable):
         self._output_equation = equation
 
-    @property
-    def extra_index(self) -> None or int:
-        return self._extra_index
-
-    @extra_index.setter
-    def extra_index(self, value):
-        self._extra_index = int(value)
-
-    def __init__(self, component, name, system_inputs, size, signal_names=None, units='any', dtype=float_array):
+    def __init__(self, component: 'SystemComponent', name: str, component_inputs: Iterable['Input'], size: int,
+                 signal_names: Iterable[str] or None = None, units='any', dtype: type = sb.types.float_base_type):
+        ISliceHolder.__init__(self)
         self._component = component
         self._size = size
         self._name = name
         self._units = units
         self._dtype = dtype
         self._external_inputs = set()
-        self._system_inputs = system_inputs
+        self._component_inputs = component_inputs
         self._signal_names = signal_names
         self._output_equation = None
-        self._global_state_indices = None
         self._output_function = None
         self._compiled = False
-        self._extra_index = None
 
-    def __call__(self, external_input):
+    def __call__(self, external_input: 'Input'):
         self.connect(external_input)
 
-    def connect(self, input_: Input):
+    def connect(self, input_: 'Input'):
         self._external_inputs.add(input_)
         if input_.external_output != self:
             input_.connect(self)
 
-    def disconnect(self, external_input):
+    def disconnect(self, external_input: 'Input'):
         if external_input in self._external_inputs:
             self._external_inputs.remove(external_input)
             external_input.disconnect(self)
 
     def compile(self, global_extra_type):
-        if self._compiled:
-            return
         assert self._output_equation is not None, 'Output equation has to be set before compilation.'
-        for input_ in self._system_inputs:
-            input_.compile(global_extra_type)
-        output_equation = self._output_equation
-        input_functions = tuple([sys_input.function for sys_input in self._system_inputs])
-
-        local_state_slice = self._component.local_state_slice
-        self._output_function = create_output_function(
-            output_equation, input_functions, local_state_slice, self._dtype, global_extra_type,
-            self._extra_index
-        )
+        assert self._local_slice is not None, 'Local slice has to be set before compilation.'
+        self._output_function = off.create_output_function(self, global_extra_type)
         self._compiled = True
 
         """ Future Content
-        if len(self.derivative_equations) != len(self._system_inputs):
+        if len(self.derivative_equations) != len(self._component_inputs):
             return
         derivative_equations = self._derivative_equations
-        input_derivative_functions = tuple(input_.derivative_function for input_ in self._system_inputs)
+        input_derivative_functions = tuple(input_.derivative_function for input_ in self._component_inputs)
 
         def derivative_function(t, global_state, derivative_array, derivative_product):
             local_state = global_state[state_indices]

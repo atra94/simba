@@ -4,7 +4,7 @@ import numpy as np
 from .output import Output
 from .input import Input
 from .state import State
-from simba.types import float_, float_array
+from simba.types import float_base_type, float_array
 
 
 class SystemComponent:
@@ -27,7 +27,7 @@ class SystemComponent:
 
     @property
     def local_state_slice(self):
-        return self._state.local_state_slice if self._state is not None else np.arange(0)
+        return self._state.local_slice if self._state is not None else np.arange(0)
 
     @property
     def extra_index(self):
@@ -56,15 +56,15 @@ class SystemComponent:
 
         def wrapper(func):
             if numba_compile:
-                output_dtype = self._outputs[output_name].dtype
-                time_dtype = float_
+                output_dtype = self._outputs[output_name].dtype[:]
+                time_dtype = float_base_type
                 input_signature = [time_dtype]
                 if self._state is not None:
-                    input_signature.append(self._state.dtype)
+                    input_signature.append(self._state.dtype[:])
                 if self._extra is not None:
                     input_signature.append(nb.typeof(self._extra))
-                for inp in self._outputs[output_name].system_inputs:
-                    input_signature.append(inp.dtype)
+                for inp in self._outputs[output_name].component_inputs:
+                    input_signature.append(inp.dtype[:])
                 input_signature = tuple(input_signature)
                 signature = output_dtype(*input_signature)
                 func = nb.njit(signature)(func)
@@ -77,12 +77,12 @@ class SystemComponent:
 
         def wrapper(func):
             if numba_compile:
-                time_dtype = float_
-                input_signature = [time_dtype, self._state.dtype]
+                time_dtype = float_base_type
+                input_signature = [time_dtype, self._state.dtype[:]]
                 if self._extra is not None:
                     input_signature.append(nb.typeof(self._extra))
-                for inp in self._state.system_inputs:
-                    input_signature.append(inp.dtype)
+                for inp in self._state.component_inputs:
+                    input_signature.append(inp.dtype[:])
                 input_signature = tuple(input_signature)
                 signature = float_array(*input_signature)
                 func = nb.njit(signature)(func)

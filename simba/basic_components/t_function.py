@@ -1,11 +1,11 @@
 import simba.core as core
-from simba.types import float_array
+from simba.types import float_array, float_base_type
 
 
 class TFunction(core.SystemComponent):
 
-    def __init__(self, fct, name='TFunction', size=1, dtype=float_array):
-        out = core.Output(self, name='Out', size=size, dtype=dtype, system_inputs=())
+    def __init__(self, fct, name='TFunction', size=1, dtype=float_base_type):
+        out = core.Output(self, name='Out', size=size, dtype=dtype, component_inputs=())
         self._fct = fct
         super().__init__(name, inputs=(), outputs=(out,))
 

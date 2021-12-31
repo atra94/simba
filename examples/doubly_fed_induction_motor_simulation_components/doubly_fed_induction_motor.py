@@ -27,27 +27,27 @@ class DoublyFedInductionMotor(SystemComponent):
         stator_voltage_input = Input(self, name='u_s', accepted_dtypes=(float_array,), size=2)
         speed_input = Input(self, name='omega', accepted_dtypes=(float_array,), size=1)
         stator_dq_current_output = Output(
-            self, name='i_r_dq', dtype=nb.float64[:], size=2, signal_names=('i_s_d', 'i_s_q',), system_inputs=()
+            self, name='i_r_dq', dtype=nb.float64[:], size=2, signal_names=('i_s_d', 'i_s_q',), component_inputs=()
         )
         stator_abc_current_output = Output(
             self, name='i_r_abc', dtype=nb.float64[:], size=3, signal_names=('i_s_a', 'i_s_b', 'i_s_c'),
-            system_inputs=()
+            component_inputs=()
         )
         rotor_dq_current_output = Output(
-            self, name='i_r_dq', dtype=nb.float64[:], size=2, signal_names=('i_r_d', 'i_r_q',), system_inputs=()
+            self, name='i_r_dq', dtype=nb.float64[:], size=2, signal_names=('i_r_d', 'i_r_q',), component_inputs=()
         )
         rotor_abc_current_output = Output(
             self, name='i_r_abc', dtype=nb.float64[:], size=3, signal_names=('i_r_a', 'i_r_b', 'i_r_c'),
-            system_inputs=()
+            component_inputs=()
         )
         torque_output = Output(
-            self, name='T', dtype=nb.float64[:], size=1, signal_names=('T',), system_inputs=()
+            self, name='T', dtype=nb.float64[:], size=1, signal_names=('T',), component_inputs=()
         )
         epsilon_output = Output(
-            self, name='epsilon', dtype=nb.float64[:], size=1, signal_names=('epsilon',), system_inputs=()
+            self, name='epsilon', dtype=nb.float64[:], size=1, signal_names=('epsilon',), component_inputs=()
         )
         state = State(
-            self, size=3, inputs=(rotor_voltage_input, stator_voltage_input, speed_input)
+            self, size=3, component_inputs=(rotor_voltage_input, stator_voltage_input, speed_input)
         )
         params = parameter if type(parameter) is dict else dict()
         self._parameter = self._default_motor_parameter.copy()

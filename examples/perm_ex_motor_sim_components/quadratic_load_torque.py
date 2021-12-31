@@ -2,15 +2,15 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output
-from simba.types import float_array
+from simba.types import float_base_type
 
 
 class QuadraticLoadTorque(SystemComponent):
 
     def __init__(self, name='QuadraticLoadTorque', a=0.01, b=0.01, c=0.0, epsilon=1e-4):
-        speed_input = Input(self, name='omega', accepted_dtypes=(float_array,), size=1)
+        speed_input = Input(self, name='omega', size=1, dtype=float_base_type)
         load_torque_output = Output(
-            self, name='T_L', dtype=float_array, size=1, system_inputs=(speed_input,)
+            self, name='T_L', dtype=float_base_type, size=1, component_inputs=(speed_input,)
         )
         self._a = a
         self._b = b

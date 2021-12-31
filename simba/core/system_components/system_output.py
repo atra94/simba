@@ -19,7 +19,7 @@ class SystemOutput(SystemComponent):
         self._output_dtypes = tuple(output.dtype for output in outputs)
         inputs = []
         for (i, output_) in enumerate(outputs):
-            input_ = Input(self, output_.name, output_.size, (output_.dtype,))
+            input_ = Input(self, output_.name, output_.size, dtype=output_.dtype)
             input_.connect(output_)
             inputs.append(input_)
         super().__init__('system_output', inputs, ())

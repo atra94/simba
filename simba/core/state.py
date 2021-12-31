@@ -2,10 +2,14 @@ import numpy as np
 
 from .input import Input
 from .function_factories.state_function_factory import create_state_function
-from simba.types import float_array
+from simba.types import float_base_type
+from simba.core.interfaces import ISliceHolder
+from typing import TYPE_CHECKING, Iterable
 
+if TYPE_CHECKING:
+    from simba.core import Input
 
-class State:
+class State(ISliceHolder):
 
     @property
     def component(self):
@@ -28,8 +32,8 @@ class State:
         return self._function
 
     @property
-    def system_inputs(self):
-        return self._system_inputs
+    def component_inputs(self) -> Iterable['Input']:
+        return self._component_inputs
 
     @property
     def state_equation(self):
@@ -45,40 +49,26 @@ class State:
         return self._state_function
 
     @property
-    def local_state_slice(self):
-        return self._local_state_slice
-
-    @local_state_slice.setter
-    def local_state_slice(self, state_slice):
-        self._local_state_slice = np.asarray(state_slice, dtype=np.int32)
-
-    @property
     def compiled(self):
         return self._state_function is not None
 
-    def __init__(self, component, inputs, size, signal_names=None, dtype=float_array):
-        assert all(isinstance(input_, Input) for input_ in inputs)
+    def __init__(self, component, component_inputs, size, signal_names=None, dtype=float_base_type):
+        ISliceHolder.__init__(self)
+        assert all(isinstance(input_, Input) for input_ in component_inputs)
         self._compiled = False
         self._state_equation = None
         self._signal_names = signal_names
         self._function = None
-        self._system_inputs = tuple(inputs)
+        self._component_inputs = tuple(component_inputs)
         self._state_function = None
         self._dtype = dtype
         self._size = size
         self._component = component
-        self._local_state_slice = None
 
     def compile(self, global_extra_type):
         if self._compiled:
             return
-        assert self._local_state_slice is not None, 'State indices have to be set before compilation.'
+        assert self._local_slice is not None, 'State indices have to be set before compilation.'
         assert self.state_equation is not None, 'The state equation has to be set before compilation.'
-        state_equation = self._state_equation
-        for input_ in self._system_inputs:
-            input_.compile(global_extra_type)
-        input_functions = tuple([input_.function for input_ in self._system_inputs])
-        self._state_function = create_state_function(
-            state_equation, input_functions, self.local_state_slice, global_extra_type, self._component.extra_index
-        )
+        self._state_function = create_state_function(self, global_extra_type)
         self._compiled = True

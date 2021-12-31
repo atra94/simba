@@ -81,16 +81,18 @@ o.set_initial_value(state, 0.0)
 for i, t in enumerate(ts):
     states.append(state)
     state = o.integrate(t)
+    #dev = system.system_equation(t, state)
+    #state = state + dev * step_size_tau
     if not o.successful():
         print(i)
         o.set_initial_value(state, t)
 
-#states = np.array(states).T.reshape(-1, len(ts))
+states = np.array(states).T.reshape(-1, len(ts))
 #o.integrate(simulation_time)
 print(o.successful())
 print(counter)
 print('Whole Time', time.time() - start)
 # Plot the results
-#plt.plot(states[0], marker='*')
-#plt.plot(states[1]*0.5, marker='*')
-#plt.show()
+plt.plot(states[0], marker='*')
+plt.plot(states[1]*0.5, marker='*')
+plt.show()

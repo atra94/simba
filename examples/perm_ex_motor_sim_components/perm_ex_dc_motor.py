@@ -2,7 +2,7 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output, State
-from simba.types import float_array
+from simba.types import float_base_type
 
 
 class PermanentlyExcitedDCMotor(SystemComponent):
@@ -19,16 +19,16 @@ class PermanentlyExcitedDCMotor(SystemComponent):
     }
 
     def __init__(self, name='PermExDCMotor', parameter=None):
-        voltage_input = Input(self, name='u', accepted_dtypes=(float_array,), size=1)
-        speed_input = Input(self, name='omega', accepted_dtypes=(float_array,), size=1)
+        voltage_input = Input(self, name='u',  size=1, dtype=float_base_type)
+        speed_input = Input(self, name='omega', size=1, dtype=float_base_type)
         current_output = Output(
-            self, name='i', dtype=nb.float64[:], size=1, signal_names=('i',), system_inputs=()
+            self, name='i', dtype=float_base_type, size=1, signal_names=('i',), component_inputs=()
         )
         torque_output = Output(
-            self, name='T', dtype=nb.float64[:], size=1, signal_names=('T',), system_inputs=()
+            self, name='T', dtype=float_base_type, size=1, signal_names=('T',), component_inputs=()
         )
         state = State(
-            self, size=1, inputs=(voltage_input, speed_input)
+            self, size=1, component_inputs=(voltage_input, speed_input), dtype=float_base_type
         )
         params = parameter if type(parameter) is dict else dict()
         self._parameter = self._default_motor_parameter.copy()

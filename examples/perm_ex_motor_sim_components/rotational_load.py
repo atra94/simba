@@ -2,21 +2,21 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output, State
-from simba.types import float_array
+from simba.types import float_base_type
 
 
 class RotationalMechanicalLoad(SystemComponent):
 
     def __init__(self, name='RotationalLoad', j=0.05):
-        driving_torque_input = Input(self, name='T', accepted_dtypes=(float_array,), size=1)
+        driving_torque_input = Input(self, name='T', size=1, dtype=float_base_type)
         load_torque_input = Input(
-            self, name='T_L', accepted_dtypes=(float_array,), size=1, default_value=np.array([0.0])
+            self, name='T_L', size=1, default_value=np.array([0.0]), dtype=float_base_type
         )
         speed_output = Output(
-            self, name='omega', dtype=float_array, size=1, signal_names=('omega',), system_inputs=()
+            self, name='omega', dtype=float_base_type, size=1, signal_names=('omega',), component_inputs=()
         )
         state = State(
-            self, size=1, inputs=(driving_torque_input, load_torque_input)
+            self, size=1, component_inputs=(driving_torque_input, load_torque_input)
         )
         self._j = j
 

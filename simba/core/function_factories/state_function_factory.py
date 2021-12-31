@@ -1,51 +1,40 @@
 import numba as nb
 import numpy as np
 
-from simba.types import float_array, float_
+import simba as sb
+from simba.types import float_array, float_base_type, int_array, int_base_type
+from typing import TYPE_CHECKING
 
-_registry = {}
-
-
-def _register(no_of_inputs: int, has_extra: bool):
-    assert no_of_inputs not in _registry.keys()
-
-    def wrapper(func):
-        _registry[(no_of_inputs, has_extra)] = func
-        return func
-
-    return wrapper
+if TYPE_CHECKING:
+    from simba.core import State
 
 
-def create_state_function(state_equation, input_functions, local_state_indices, global_extra_type, extra_index):
-    has_extra = extra_index is not None
-    try:
-        fct = _registry[len(input_functions), has_extra](
-            state_equation, input_functions, local_state_indices, extra_index
-        )
-    except KeyError:
-        fct = _create_arbitrary_function(state_equation, input_functions, local_state_indices, extra_index)
-    if type(state_equation) == nb.core.registry.CPUDispatcher\
-            and all(type(in_fct) == nb.core.registry.CPUDispatcher for in_fct in input_functions):
-        signature = nb.none(float_, float_array, float_array, global_extra_type)
+def create_state_function(state, global_extra_type):
+
+    fct = _create_state_function(state)
+    if type(state.state_equation) == nb.core.registry.CPUDispatcher:
+        signature = nb.none(float_base_type, float_array, float_array, int_array, float_array, global_extra_type)
         fct = nb.njit(signature)(fct)
     return fct
 
 
-def _create_arbitrary_function(state_equation, input_functions, local_state_indices, extra_index):
+def _create_state_function(state: 'State'):
     """
-        exec(result, extra_index, state_equation, input_functions, local_state_indices):
+        exec(result, state):
 
             # Write to local variables to speed up numba computation significantly
             # input_function_{i} = input_functions[{i}]
-            input_function_0 = input_functions[0]
-            input_function_1 = input_functions[1]
+            input_slice_0 = state.component_inputs[0].external_output.local_output_slice
+            input_1 = state.component_inputs[1].default_value
             # ...
 
-            def mapping(t, global_state, global_derivatives, global_extras):
+            def state_function(
+                t, global_state, global_float_outputs, global_int_outputs, global_derivatives, global_extras
+            ):
 
                 # input_{i} = input_function_{i}(t, global_state, global_extras)
-                input_0 = input_function_0(t, global_state, global_extras)
-                input_1 = input_function_1(t, global_state, global_extras)
+                input_0 = global_float_output[input_slice_0]
+
                 # ...
 
                 # Read local state and extra data from the global data structures
@@ -55,24 +44,37 @@ def _create_arbitrary_function(state_equation, input_functions, local_state_indi
                 global_derivatives[local_state_indices] = state_equation(t, local_state, extra, input_0, input_1)
 
             # Append the generated function to the (empty) result list to pass it back to the caller
-            result.append(mapping)
+            result.append(state_function)
         """
     def spacing(no_of_spaces):
         return ' ' * no_of_spaces
 
-    header = "def mapping(t, global_state, global_derivatives, global_extras):\n"
+    header = "def state_function(t, global_state, global_float_outputs, global_int_outputs, global_derivatives," \
+             " global_extras):\n"
     state_reader = spacing(1) + "local_state = global_state[local_state_indices]\n"
     state_signature = " local_state,"
 
     input_reader = ""
     input_signature = ""
     prior = ""
-    for i in range(len(input_functions)):
-        input_reader += spacing(1) + f'input_{i} = input_function_{i}(t, global_state, global_extras)\n'
-        input_signature += f" input_{i},"
-        prior += f"input_function_{i} = input_functions[{i}]\n"
+    prior += "local_state_indices = state.local_slice\n"
+    prior += "state_equation = state.state_equation\n"
+    for i, input_ in enumerate(state.component_inputs):
+        if input_.connected:
+            prior += f"input_slice_{i} = state.component_inputs[{i}].external_output.local_slice\n"
+            if input_.dtype == float_base_type:
+                arr = 'global_float_outputs'
+            elif input_.dtype == int_base_type:
+                arr = 'global_int_outputs'
+            else:
+                raise AttributeError(f'Illegal dtype of input {input_.name}: {input_.dtype}. Must be float or int')
+            input_reader += spacing(1) + f'input_{i} = {arr}[input_slice_{i}]\n'
+        else:
+            prior += f'input_{i} = output.component_inputs[{i}].default_value\n'
 
-    if extra_index is not None:
+        input_signature += f" input_{i}, "
+
+    if state.component.extra_index is not None:
         extra_reader = spacing(1) + f"extra =  global_extras[extra_index]\n"
         extra_signature = "extra, "
     else:
@@ -82,17 +84,14 @@ def _create_arbitrary_function(state_equation, input_functions, local_state_indi
     return_line = spacing(1) + f"global_derivatives[local_state_indices] = " \
         f"state_equation(t,{state_signature}{extra_signature}{input_signature})\n"
 
-    appendix = "result.append(mapping)\n"
+    appendix = "result.append(state_function)\n"
     fct = prior + header + state_reader + input_reader + extra_reader + return_line + appendix
     f = []
     exec(
         fct,
         {
             'result': f,
-            'extra_index': extra_index,
-            'state_equation': state_equation,
-            'input_functions': input_functions,
-            'local_state_indices': local_state_indices,
+            'state': state
         }
     )
     return f[0]

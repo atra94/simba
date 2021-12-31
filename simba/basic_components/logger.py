@@ -2,18 +2,18 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output
-from simba.types import float_, float_array
+from simba.types import float_base_type, float_array
 
 
 class Logger(SystemComponent):
 
     def __init__(self, size, dtype, name='Logger'):
-        input_ = Input(self, 'In', size, (dtype,))
-        output_ = Output(self, 'Out', (input_,), size=0, dtype=nb.none)
+        input_ = Input(self, 'In', size, dtype)
+        output_ = Output(self, 'Out', (input_,), size=0, dtype=float_base_type)
         super().__init__(inputs=(input_,), outputs=(output_,), name=name)
 
     def compile(self, get_extra_index, numba_compile=True):
-        t_data = nb.typed.List(lsttype=nb.types.ListType(float_))
+        t_data = nb.typed.List(lsttype=nb.types.ListType(float_base_type))
         y_data = nb.typed.List(lsttype=nb.types.ListType(self.inputs['In'].dtype))
         self._extra = (t_data, y_data)
         self._extra_index = get_extra_index(self._extra)

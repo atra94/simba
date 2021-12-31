@@ -2,7 +2,7 @@ import numba as nb
 import numpy as np
 
 from simba.core import SystemComponent, Input, Output
-from simba.types import float_array
+from simba.types import float_base_type
 
 
 class PController(SystemComponent):
@@ -13,9 +13,10 @@ class PController(SystemComponent):
 
     def __init__(self, name='p_controller', p_gain=1.0):
         self._p_gain = p_gain
-        error_input = Input(self, name='error', accepted_dtypes=(float_array,), size=1)
+        error_input = Input(self, name='error', dtype=float, size=1)
         output = Output(
-            self, name='action', dtype=float_array, size=1, signal_names=('action',), system_inputs=(error_input,)
+            self, name='action', dtype=float_base_type, size=1, signal_names=('action',),
+            component_inputs=(error_input,)
         )
         super().__init__(name, outputs=(output,), inputs=(error_input,))
 
