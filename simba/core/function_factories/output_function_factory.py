@@ -71,10 +71,12 @@ def _create_arbitrary_function(output):
             else:
                 raise AttributeError(f'Illegal dtype of input {input_.name}: {input_.dtype}. Must be float or int')
             input_reader += spacing(1) + f'input_{i} = {arr}[input_slice_{i}]\n'
+            input_signature += f" input_{i}, "
         else:
             prior += f'input_{i} = output.component_inputs[{i}].default_value\n'
+            input_signature += f" input_{i} * nb.float64([1.0]), "
 
-        input_signature += f" input_{i}, "
+
     if output.component.extra_index is not None:
         prior += "extra_data_index = output.component.extra_index\n"
         extras_reader = spacing(1) + f"extra = global_extra_data[extra_data_index]\n"
@@ -83,7 +85,6 @@ def _create_arbitrary_function(output):
         extras_reader = ""
         extras_signature = ""
 
-    #return_line = spacing(1) + f"return output_equation(t,{state_signature}{extras_signature}{input_signature})\n"
     if output.dtype == float_base_type:
         target = 'global_float_outputs'
     elif output.dtype == int_base_type:
@@ -99,7 +100,8 @@ def _create_arbitrary_function(output):
         fct,
         {
             'result': f,
-            'output': output
+            'output': output,
+            'nb': nb
         }
     )
     return f[0]

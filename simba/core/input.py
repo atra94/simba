@@ -10,6 +10,15 @@ if TYPE_CHECKING:
 class Input:
 
     @property
+    def default_value(self):
+        return self._default_value
+
+    @default_value.setter
+    def default_value(self, value):
+        self._default_value = np.asarray(value)
+        assert self.size == self._default_value.size
+
+    @property
     def size(self):
         return self._size
 
@@ -67,10 +76,9 @@ class Input:
         # (np.ndarray / None): Default value to be used if no Output is connected.
         # If a default value is specified, a dtype and a size have to be specified during initialization.
         # None: A connected output is required.
+        self._default_value = None
         if default_value is not None:
-            self._default_value = np.asarray(default_value)
-            assert size == self._default_value.size
-        self._default_value = default_value
+            self.default_value = default_value
 
     def __call__(self, output):
         self.connect(output)
@@ -78,6 +86,9 @@ class Input:
     def connect(self, output):
         if self._external_output is not None:
             self._external_output.disconnect(self)
+        if not isinstance(output, sb.core.Output):
+            self.default_value = output
+            return
         self._external_output = output
         assert output.dtype == self.dtype, \
             f'Datatype Mismatch: Input dtype {self._dtype}, ' \

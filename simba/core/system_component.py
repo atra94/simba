@@ -64,7 +64,10 @@ class SystemComponent:
                 if self._extra is not None:
                     input_signature.append(nb.typeof(self._extra))
                 for inp in self._outputs[output_name].component_inputs:
-                    input_signature.append(inp.dtype[:])
+                    if inp.connected:
+                        input_signature.append(inp.dtype[:])
+                    else:
+                        input_signature.append(inp.dtype[::1])
                 input_signature = tuple(input_signature)
                 signature = output_dtype(*input_signature)
                 func = nb.njit(signature)(func)

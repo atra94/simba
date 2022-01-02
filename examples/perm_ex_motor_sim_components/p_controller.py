@@ -13,7 +13,7 @@ class PController(SystemComponent):
 
     def __init__(self, name='p_controller', p_gain=1.0):
         self._p_gain = p_gain
-        error_input = Input(self, name='error', dtype=float, size=1)
+        error_input = Input(self, name='error', dtype=float_base_type, size=1)
         output = Output(
             self, name='action', dtype=float_base_type, size=1, signal_names=('action',),
             component_inputs=(error_input,)
