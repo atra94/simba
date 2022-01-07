@@ -76,7 +76,6 @@ def _create_arbitrary_function(output):
             prior += f'input_{i} = output.component_inputs[{i}].default_value\n'
             input_signature += f" input_{i} * nb.float64([1.0]), "
 
-
     if output.component.extra_index is not None:
         prior += "extra_data_index = output.component.extra_index\n"
         extras_reader = spacing(1) + f"extra = global_extra_data[extra_data_index]\n"

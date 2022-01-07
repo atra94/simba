@@ -20,11 +20,11 @@ full = nb.float64([1.])
 
 
 def reference(t_):
-    if t_ < 0.5 * simulation_time:
-        return half * amplitude
-    else:
-        return full * amplitude
-    #return amplitude * np.cos(t_)
+    #if t_ < 0.5 * simulation_time:
+    #    return half * amplitude
+    #else:
+    #    return full * amplitude
+    return amplitude * np.cos(t_)
 
 
 # Initialize Components
@@ -36,7 +36,7 @@ load_torque = QuadraticLoadTorque()
 load = RotationalMechanicalLoad()
 
 # Connect Components
-sub(in1=np.array([100.0]), in2=load.outputs['omega'])
+sub(in1=reference_generation.outputs['Out'], in2=load.outputs['omega'])
 p_controller(error=sub.outputs['Out'])
 motor(u=p_controller.outputs['action'], omega=load.outputs['omega'])
 load(t=motor.outputs['T'], t_l=load_torque.outputs['T_L'])
@@ -70,8 +70,7 @@ counter = 0
 t_ = []
 
 
-def solout(t, y):
-    t_.append(t)
+def solout(*_):
     global counter
     counter += 1
 
@@ -80,9 +79,9 @@ o.set_solout(solout)
 o.set_initial_value(state, 0.0)
 for i, t in enumerate(ts):
     states.append(state)
-    state = o.integrate(t)
-    #dev = system.system_equation(t, state)
-    #state = state + dev * step_size_tau
+    #state = o.integrate(t)
+    dev = system.system_equation(t, state)
+    state = state + dev * step_size_tau
     if not o.successful():
         print(i)
         o.set_initial_value(state, t)

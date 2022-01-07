@@ -126,10 +126,11 @@ class System:
         state_functions = tuple([state.state_function for state in self._states.values()])
         output_functions = tuple([output.output_function for output in self._outputs.values()])
         state_length = self._state_length
-
-        system_equation = create_system_equation(state_functions, output_functions, state_length, global_extra_type)
+        float_length = sum(output.size for output in self._outputs.values() if output.dtype == float_base_type)
+        int_length = sum(output.size for output in self._outputs.values() if output.dtype == int_base_type)
+        system_equation = create_system_equation(state_functions, output_functions, state_length, float_length, int_length, global_extra_type)
 
         self._system_equation = \
             lambda t, global_state: system_equation(
-                t, global_state, self._float_output_values, self._int_output_values, self._extras
+                t, global_state, self._extras
             )
